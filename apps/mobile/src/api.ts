@@ -53,6 +53,28 @@ export interface PlayerState {
   covenId?: string;
   maxFielded: number;
   bossDamageTotal: number;
+  arenaRating: number;
+  arenaWins: number;
+}
+
+export interface ArenaOpponent {
+  id: string;
+  name: string;
+  rating: number;
+  isGhost: boolean;
+}
+
+export interface ArenaStandings {
+  seasonId: number;
+  endsAt: number;
+  rows: { id: string; name: string; rating: number; wins: number; isGhost: boolean }[];
+}
+
+export interface ChatMessage {
+  id: string;
+  name: string;
+  text: string;
+  ts: number;
 }
 
 export interface CovenView {
@@ -269,6 +291,22 @@ export const api = {
     }>("POST", `/players/${id}/coven/homunculus/attack`),
   leaderboard: (type: "level" | "power" | "boss") =>
     req<{ type: string; rows: LeaderboardRow[] }>("GET", `/leaderboard?type=${type}`),
+  arenaOpponents: (id: string) => req<ArenaOpponent[]>("GET", `/players/${id}/exhibition/opponents`),
+  arenaFight: (id: string, opponentId: string) =>
+    req<{ result: { win: boolean; ratingBefore: number; ratingAfter: number; renown: number }; state: PlayerState }>(
+      "POST",
+      `/players/${id}/exhibition/fight`,
+      { opponentId },
+    ),
+  arenaStandings: () => req<ArenaStandings>("GET", "/exhibition/standings"),
+  renownShop: (id: string) =>
+    req<{ critter: Critter; state: PlayerState }>("POST", `/players/${id}/exhibition/shop`),
+  worldChat: () => req<ChatMessage[]>("GET", "/chat/world"),
+  postWorldChat: (id: string, text: string) =>
+    req<ChatMessage[]>("POST", `/players/${id}/chat/world`, { text }),
+  covenChat: (id: string) => req<ChatMessage[]>("GET", `/players/${id}/chat/coven`),
+  postCovenChat: (id: string, text: string) =>
+    req<ChatMessage[]>("POST", `/players/${id}/chat/coven`, { text }),
   events: () => req<GameEvent[]>("GET", "/events"),
   adminStartEvent: (
     token: string,

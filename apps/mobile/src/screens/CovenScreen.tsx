@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { api, type CovenView, type LeaderboardRow, type Reward } from "../api";
+import { api, type ChatMessage, type CovenView, type LeaderboardRow, type Reward } from "../api";
 import { useGame } from "../state";
 import { notify } from "../dialog";
 import { theme } from "../theme";
+import { ChatBox } from "../components/ChatBox";
 
 type Board = "level" | "power" | "boss";
 
@@ -24,6 +25,8 @@ export function CovenScreen() {
   const [busy, setBusy] = useState(false);
   const [board, setBoard] = useState<Board>("power");
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
+  const [worldMsgs, setWorldMsgs] = useState<ChatMessage[]>([]);
+  const [covenMsgs, setCovenMsgs] = useState<ChatMessage[]>([]);
 
   const loadCoven = useCallback(async () => {
     if (!player) return;
@@ -50,6 +53,31 @@ export function CovenScreen() {
     const t = setInterval(loadBoard, 12000);
     return () => clearInterval(t);
   }, [loadBoard]);
+
+  const loadChats = useCallback(async () => {
+    if (!player) return;
+    try {
+      setWorldMsgs(await api.worldChat());
+      if (player.covenId) setCovenMsgs(await api.covenChat(player.id));
+    } catch {
+      /* ignore */
+    }
+  }, [player?.id, player?.covenId]);
+
+  useEffect(() => {
+    loadChats();
+    const t = setInterval(loadChats, 10000);
+    return () => clearInterval(t);
+  }, [loadChats]);
+
+  const sendWorld = async (text: string) => {
+    if (!player) return;
+    setWorldMsgs(await api.postWorldChat(player.id, text));
+  };
+  const sendCoven = async (text: string) => {
+    if (!player) return;
+    setCovenMsgs(await api.postCovenChat(player.id, text));
+  };
 
   const wrap = async (fn: () => Promise<{ coven: CovenView | null; state: typeof player }>) => {
     if (!player || busy) return;
@@ -165,6 +193,9 @@ export function CovenScreen() {
           </View>
         ))}
       </View>
+
+      {coven && <ChatBox title="Coven chat" messages={covenMsgs} onSend={sendCoven} />}
+      <ChatBox title="World chat" messages={worldMsgs} onSend={sendWorld} />
     </ScrollView>
   );
 }

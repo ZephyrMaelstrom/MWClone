@@ -45,14 +45,18 @@ import { attackBoss, bossView } from "./worldboss.js";
 import { activeEvents, clearEvents, startEvent, type EventType } from "./events.js";
 import {
   attackHomunculus,
+  covenChat,
   covenView,
   covenmateCount,
   createCoven,
   getCoven,
   joinCoven,
   leaveCoven,
+  postCovenChat,
   summonHomunculus,
 } from "./covens.js";
+import { buyRenownEgg, fight, opponents, standings } from "./exhibition.js";
+import { postWorld, worldChat } from "./chat.js";
 import { broodTotals, critterStats, maxFielded, xpForLevel } from "@cc/engine";
 import { login, register } from "./auth.js";
 import type { SkillKey } from "./store.js";
@@ -108,6 +112,8 @@ function publicState(p: PlayerState) {
     covenId: p.covenId,
     maxFielded: maxFielded(p.level, covenmateCount(p)),
     bossDamageTotal: p.bossDamageTotal,
+    arenaRating: p.arenaRating,
+    arenaWins: p.arenaWins,
   };
 }
 
@@ -402,6 +408,66 @@ export function buildServer(): FastifyInstance {
     });
     rows.sort((a, b) => b.value - a.value);
     return { type, rows: rows.slice(0, 20) };
+  });
+
+  // --- Exhibition (ranked ladder) ---
+  app.get("/exhibition/standings", async () => standings(now()));
+
+  app.get("/players/:id/exhibition/opponents", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    return opponents(p, 6, now());
+  });
+
+  app.post("/players/:id/exhibition/fight", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { opponentId?: string };
+    if (!body.opponentId) return reply.code(400).send({ error: "opponentId required" });
+    return guard(reply, () => {
+      const result = fight(p, body.opponentId!, now());
+      savePlayer(p);
+      return { result, state: publicState(p) };
+    });
+  });
+
+  app.post("/players/:id/exhibition/shop", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    return guard(reply, () => {
+      const critter = buyRenownEgg(p);
+      savePlayer(p);
+      return { critter, state: publicState(p) };
+    });
+  });
+
+  // --- Chat (world + coven) ---
+  app.get("/chat/world", async () => worldChat());
+
+  app.post("/players/:id/chat/world", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { text?: string };
+    return guard(reply, () => {
+      postWorld(p.username ?? p.name, body.text ?? "", now());
+      return worldChat();
+    });
+  });
+
+  app.get("/players/:id/chat/coven", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    return guard(reply, () => covenChat(p));
+  });
+
+  app.post("/players/:id/chat/coven", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { text?: string };
+    return guard(reply, () => {
+      postCovenChat(p, body.text ?? "", now());
+      return covenChat(p);
+    });
   });
 
   // World Boss — "The Aberration" (shared co-op).

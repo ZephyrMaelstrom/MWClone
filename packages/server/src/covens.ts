@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { broodTotals, critterStats, type Critter } from "@cc/engine";
+import { randomUUID as uuid } from "node:crypto";
 import { dbCovenDelete, dbCovenLoadAll, dbCovenUpsert } from "./db.js";
 import { GameError } from "./errors.js";
 import { applyReward, type Reward } from "./daily.js";
+import { sanitize, type ChatMessage } from "./chat.js";
 import { getPlayer, savePlayer, type PlayerState } from "./store.js";
 
 export interface CovenBoss {
@@ -20,6 +22,7 @@ export interface Coven {
   leaderId: string;
   memberIds: string[];
   boss: CovenBoss | null;
+  chat?: ChatMessage[];
   createdTs: number;
 }
 
@@ -184,6 +187,23 @@ function distribute(boss: CovenBoss, selfId: string): Reward | undefined {
     if (pid === selfId) self = reward;
   }
   return self;
+}
+
+const MAX_COVEN_CHAT = 60;
+
+export function covenChat(p: PlayerState): ChatMessage[] {
+  const coven = getCoven(p.covenId);
+  if (!coven) throw new GameError("Join a coven first");
+  return coven.chat ?? [];
+}
+
+export function postCovenChat(p: PlayerState, text: string, now: number): ChatMessage {
+  const coven = getCoven(p.covenId);
+  if (!coven) throw new GameError("Join a coven first");
+  const msg: ChatMessage = { id: uuid(), name: p.username ?? p.name, text: sanitize(text), ts: now };
+  coven.chat = [...(coven.chat ?? []), msg].slice(-MAX_COVEN_CHAT);
+  save(coven);
+  return msg;
 }
 
 export interface CovenView {

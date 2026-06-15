@@ -280,6 +280,40 @@ describe("P2: coven + leaderboard endpoints", () => {
   });
 });
 
+describe("P2 leftovers: exhibition + chat endpoints", () => {
+  it("fights in the exhibition and updates rating/renown", async () => {
+    const a = await createPlayer("A");
+    const b = await createPlayer("B");
+    const res = await app.inject({
+      method: "POST",
+      url: `/players/${a.id}/exhibition/fight`,
+      payload: { opponentId: b.id },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(typeof res.json().result.win).toBe("boolean");
+    const board = await app.inject({ method: "GET", url: "/exhibition/standings" });
+    expect(board.json().rows.length).toBeGreaterThan(0);
+  });
+
+  it("posts and reads world chat", async () => {
+    const a = await createPlayer("Chatter");
+    const post = await app.inject({
+      method: "POST",
+      url: `/players/${a.id}/chat/world`,
+      payload: { text: "hello covenmates" },
+    });
+    expect(post.statusCode).toBe(200);
+    const msgs = (await app.inject({ method: "GET", url: "/chat/world" })).json();
+    expect(msgs.some((m: { text: string }) => m.text === "hello covenmates")).toBe(true);
+  });
+
+  it("rejects empty chat messages", async () => {
+    const a = await createPlayer("A");
+    const res = await app.inject({ method: "POST", url: `/players/${a.id}/chat/world`, payload: { text: "  " } });
+    expect(res.statusCode).toBe(409);
+  });
+});
+
 describe("events (public + admin)", () => {
   it("admin routes require ADMIN_TOKEN", async () => {
     delete process.env.ADMIN_TOKEN;

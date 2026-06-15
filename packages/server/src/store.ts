@@ -69,6 +69,8 @@ export interface PlayerState {
   createdTs: number;
   covenId?: string;
   bossDamageTotal: number; // lifetime World Boss damage (leaderboard)
+  arenaRating: number; // Exhibition ladder (ELO-ish)
+  arenaWins: number; // wins this season
   // account (optional — guests have none)
   username?: string;
   passwordHash?: string;
@@ -100,6 +102,8 @@ export function normalize(p: PlayerState): void {
   if (!p.attendance) p.attendance = { lastClaim: "", day: 0 };
   if (!p.roulette) p.roulette = { lastSpin: "" };
   if (p.bossDamageTotal == null) p.bossDamageTotal = 0;
+  if (p.arenaRating == null) p.arenaRating = 1000;
+  if (p.arenaWins == null) p.arenaWins = 0;
 }
 
 export function newCritter(tier: Tier, essence: EssenceId, grade: Grade = "normal"): Critter {
@@ -148,6 +152,8 @@ function freshState(id: string, name: string, now: number): PlayerState {
     broodIds: starters.map((c) => c.id),
     createdTs: now,
     bossDamageTotal: 0,
+    arenaRating: 1000,
+    arenaWins: 0,
   };
 }
 
