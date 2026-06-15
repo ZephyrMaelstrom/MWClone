@@ -1,5 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, type PlayerState } from "./api";
+
+const PLAYER_ID_KEY = "cc.playerId";
 
 interface GameContextValue {
   player: PlayerState | null;
@@ -7,17 +10,27 @@ interface GameContextValue {
   error: string | null;
   setPlayer: (p: PlayerState) => void;
   refresh: () => Promise<void>;
+  /** Wipe progress back to a fresh starter profile (same id). */
+  resetProgress: () => Promise<void>;
+  /** Abandon this profile and start a brand-new one. */
+  newProfile: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
 
-/** For the prototype we auto-create a player on first launch. */
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const [player, setPlayerState] = useState<PlayerState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const setPlayer = useCallback((p: PlayerState) => setPlayerState(p), []);
+
+  const createAndStore = useCallback(async () => {
+    const p = await api.createPlayer("Alchemist");
+    await AsyncStorage.setItem(PLAYER_ID_KEY, p.id);
+    setPlayerState(p);
+    return p;
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!player) return;
@@ -28,20 +41,42 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   }, [player]);
 
+  const resetProgress = useCallback(async () => {
+    if (!player) return;
+    setPlayerState(await api.reset(player.id));
+  }, [player]);
+
+  const newProfile = useCallback(async () => {
+    await AsyncStorage.removeItem(PLAYER_ID_KEY);
+    await createAndStore();
+  }, [createAndStore]);
+
   useEffect(() => {
     (async () => {
       try {
-        setPlayerState(await api.createPlayer("Alchemist"));
+        const savedId = await AsyncStorage.getItem(PLAYER_ID_KEY);
+        if (savedId) {
+          try {
+            // Resume the stored profile (progress persists server-side).
+            setPlayerState(await api.getPlayer(savedId));
+            return;
+          } catch {
+            // Stored profile is gone on the server — fall through to create.
+          }
+        }
+        await createAndStore();
       } catch (e) {
         setError((e as Error).message);
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [createAndStore]);
 
   return (
-    <GameContext.Provider value={{ player, loading, error, setPlayer, refresh }}>
+    <GameContext.Provider
+      value={{ player, loading, error, setPlayer, refresh, resetProgress, newProfile }}
+    >
       {children}
     </GameContext.Provider>
   );

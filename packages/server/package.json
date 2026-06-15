@@ -5,9 +5,9 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
-    "test": "vitest run",
+    "dev": "NODE_OPTIONS=--experimental-sqlite tsx watch src/index.ts",
+    "start": "NODE_OPTIONS=--experimental-sqlite tsx src/index.ts",
+    "test": "CC_DB_PATH=:memory: NODE_OPTIONS=--experimental-sqlite vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -3,6 +3,7 @@ import { constantRng } from "@cc/engine";
 import { buildServer } from "../src/server.js";
 import { resetStore } from "../src/store.js";
 import { setRngFactory } from "../src/game.js";
+import { dbLoadAll } from "../src/db.js";
 
 let app: ReturnType<typeof buildServer>;
 
@@ -97,5 +98,39 @@ describe("raid (friendly PvP)", () => {
     // equal broods + neutral rolls => attacker ATK (5:4-ish) vs defender DEF; result deterministic
     expect(typeof outcome.win).toBe("boolean");
     expect(outcome.gristStolen).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("reset & delete", () => {
+  it("reset restores a fresh starter profile, keeping the same id", async () => {
+    setRngFactory(() => constantRng(0.99)); // no capture
+    const p = await createPlayer();
+    await app.inject({ method: "POST", url: `/players/${p.id}/quest` }); // changes grist/energy
+    const res = await app.inject({ method: "POST", url: `/players/${p.id}/reset` });
+    expect(res.statusCode).toBe(200);
+    const reset = res.json();
+    expect(reset.id).toBe(p.id); // same profile id -> client keeps working
+    expect(reset.grist).toBe(1000);
+    expect(reset.energy).toBe(20);
+    expect(reset.critters).toHaveLength(6);
+  });
+
+  it("delete removes the profile (then 404)", async () => {
+    const p = await createPlayer();
+    const del = await app.inject({ method: "DELETE", url: `/players/${p.id}` });
+    expect(del.statusCode).toBe(204);
+    const get = await app.inject({ method: "GET", url: `/players/${p.id}` });
+    expect(get.statusCode).toBe(404);
+  });
+});
+
+describe("persistence (write-through to SQLite)", () => {
+  it("actions are persisted to the store", async () => {
+    setRngFactory(() => constantRng(0.99));
+    const p = await createPlayer();
+    await app.inject({ method: "POST", url: `/players/${p.id}/quest` });
+    const persisted = dbLoadAll().find((x) => x.id === p.id);
+    expect(persisted).toBeDefined();
+    expect(persisted!.grist).toBeGreaterThan(1000);
   });
 });

@@ -9,20 +9,21 @@ metals toward the Magnum Opus, and raid rival labs.
 ## Monorepo layout (pnpm workspace)
 ```
 packages/engine   @cc/engine  — shared game logic (config-as-data + pure fns), 31 tests
-packages/server   @cc/server  — server-authoritative Fastify API, 6 tests
+packages/server   @cc/server  — Fastify API + SQLite persistence + reset, 9 tests
 apps/mobile       @cc/mobile  — Expo / React Native client (Crucible centerpiece)
-docs/             design + tuning + research
+docs/             design + tuning + research + art direction
 ```
 
 ## Run it
 ```bash
 pnpm install
-pnpm -r test                 # engine + server tests (37 passing)
-pnpm -C packages/server dev  # API on http://localhost:3000
+pnpm -r test                 # engine (31) + server (9) tests
+pnpm -C packages/server dev  # API on http://localhost:3000 (SQLite at data/cc.sqlite)
 pnpm -C apps/mobile start    # Expo client (needs Expo toolchain + device/sim)
 ```
-The engine and server are verified in this environment; the mobile app is scaffolded and
-typechecks but needs the Expo toolchain/simulator to boot (see `apps/mobile/README.md`).
+The engine and server are verified in this environment (persistence survives restarts;
+profile reset works); the mobile app is scaffolded and typechecks but needs the Expo
+toolchain/simulator to boot (see `apps/mobile/README.md`).
 
 ## Documents
 - [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) — the full Game Design Document (GDD).
@@ -38,6 +39,8 @@ typechecks but needs the Expo toolchain/simulator to boot (see `apps/mobile/READ
 - [x] Mechanical tuning — 11 tiers · friendly PvP · no gifting (GDD §17, `docs/TUNING.md`)
 - [x] Client decision: **React Native (Expo)** + Skia/Reanimated
 - [x] MVP prototype scaffolded — engine + server verified, mobile client typechecks
+- [x] SQLite persistence (survives restarts) + profile reset/delete + on-device profile id
+- [ ] Concept art generated (blocked: Higgsfield free plan, 0 credits — see `docs/ART_DIRECTION.md`)
 - [ ] Boot mobile app on device/simulator + iterate visuals
 - [ ] Economy & combat numbers playtested
 - [ ] Playable prototype (mobile)

@@ -8,13 +8,15 @@ import { CrucibleScreen } from "./src/screens/CrucibleScreen";
 import { RosterScreen } from "./src/screens/RosterScreen";
 import { QuestScreen } from "./src/screens/QuestScreen";
 import { RaidScreen } from "./src/screens/RaidScreen";
+import { ProfileScreen } from "./src/screens/ProfileScreen";
 
-type TabKey = "crucible" | "roster" | "quest" | "raid";
+type TabKey = "crucible" | "roster" | "quest" | "raid" | "profile";
 const TABS: { key: TabKey; label: string }[] = [
   { key: "crucible", label: "Crucible" },
   { key: "roster", label: "Roster" },
   { key: "quest", label: "Quest" },
   { key: "raid", label: "Raid" },
+  { key: "profile", label: "Lab" },
 ];
 
 function HeaderBar() {
@@ -63,6 +65,7 @@ function Shell() {
         {tab === "roster" && <RosterScreen />}
         {tab === "quest" && <QuestScreen />}
         {tab === "raid" && <RaidScreen />}
+        {tab === "profile" && <ProfileScreen />}
       </View>
       <View style={styles.tabbar}>
         {TABS.map((t) => (

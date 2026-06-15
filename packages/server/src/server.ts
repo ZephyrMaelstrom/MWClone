@@ -3,7 +3,10 @@ import { ESSENCES, TIERS } from "@cc/engine";
 import {
   allPlayers,
   createPlayer,
+  deletePlayer,
   getPlayer,
+  resetPlayer,
+  savePlayer,
   type PlayerState,
 } from "./store.js";
 import {
@@ -73,6 +76,7 @@ export function buildServer(): FastifyInstance {
     const p = getPlayer((req.params as { id: string }).id);
     if (!p) return reply.code(404).send({ error: "Player not found" });
     const gained = claimIdle(p, now());
+    savePlayer(p);
     return { gained, state: publicState(p) };
   });
 
@@ -81,6 +85,7 @@ export function buildServer(): FastifyInstance {
     if (!p) return reply.code(404).send({ error: "Player not found" });
     return guard(reply, () => {
       const outcome = doQuest(p, now());
+      savePlayer(p);
       return { outcome, state: publicState(p) };
     });
   });
@@ -92,8 +97,23 @@ export function buildServer(): FastifyInstance {
     if (!body.a || !body.b) return reply.code(400).send({ error: "Provide critter ids a and b" });
     return guard(reply, () => {
       const outcome = doTransmute(p, body.a!, body.b!, body.catalyst ?? false);
+      savePlayer(p);
       return { outcome, state: publicState(p) };
     });
+  });
+
+  // Reset progress back to a fresh starter profile (keeps id + name).
+  app.post("/players/:id/reset", async (req, reply) => {
+    const reset = resetPlayer((req.params as { id: string }).id, now());
+    if (!reset) return reply.code(404).send({ error: "Player not found" });
+    return publicState(reset);
+  });
+
+  // Permanently delete a profile.
+  app.delete("/players/:id", async (req, reply) => {
+    const ok = deletePlayer((req.params as { id: string }).id);
+    if (!ok) return reply.code(404).send({ error: "Player not found" });
+    return reply.code(204).send();
   });
 
   app.post("/raid", async (req, reply) => {
@@ -104,6 +124,8 @@ export function buildServer(): FastifyInstance {
     if (attacker.id === defender.id) return reply.code(400).send({ error: "Cannot raid yourself" });
     return guard(reply, () => {
       const outcome = doRaid(attacker, defender, now());
+      savePlayer(attacker);
+      savePlayer(defender);
       return { outcome, state: publicState(attacker) };
     });
   });

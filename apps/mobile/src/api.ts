@@ -63,6 +63,7 @@ export const api = {
       b,
       catalyst,
     }),
+  reset: (id: string) => req<PlayerState>("POST", `/players/${id}/reset`),
   raid: (attacker: string, defender: string) =>
     req<{ outcome: { win: boolean; gristStolen: number }; state: PlayerState }>("POST", "/raid", {
       attacker,
