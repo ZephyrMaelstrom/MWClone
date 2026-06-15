@@ -1,4 +1,4 @@
-import type { Essence, EssenceId } from "../types.js";
+import type { Essence, EssenceId } from "../types";
 
 /** The six essences. atkParts + defParts always === 7 (clean stat math). */
 export const ESSENCES: Record<EssenceId, Essence> = {

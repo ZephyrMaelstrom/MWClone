@@ -1,13 +1,13 @@
 /** Crucible Critters shared game engine — public API. */
-export * from "./types.js";
-export * from "./rng.js";
-export * from "./power.js";
-export * from "./transmute.js";
-export * from "./combat.js";
-export * from "./economy.js";
+export * from "./types";
+export * from "./rng";
+export * from "./power";
+export * from "./transmute";
+export * from "./combat";
+export * from "./economy";
 
-export { ESSENCES, ESSENCE_IDS, FUSION_GRID, GRADE_MULT } from "./config/essences.js";
-export { TIERS, MAX_TIER, MAX_TRANSMUTE_TIER } from "./config/tiers.js";
+export { ESSENCES, ESSENCE_IDS, FUSION_GRID, GRADE_MULT } from "./config/essences";
+export { TIERS, MAX_TIER, MAX_TRANSMUTE_TIER } from "./config/tiers";
 export {
   SUCCESS_BY_RESULT_TIER,
   GRIST_COST_BY_RESULT_TIER,
@@ -18,11 +18,11 @@ export {
   gristCost,
   catalystCost,
   recoverCost,
-} from "./config/transmute.js";
+} from "./config/transmute";
 export {
   APPARATUS,
   ECONOMY,
   RESOURCES,
   PROGRESSION,
   type ApparatusDef,
-} from "./config/economy.js";
+} from "./config/economy";

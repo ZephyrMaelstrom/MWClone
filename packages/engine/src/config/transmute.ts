@@ -1,4 +1,4 @@
-import type { Tier } from "../types.js";
+import type { Tier } from "../types";
 
 /** Base success rate keyed by RESULT tier (the tier produced). */
 export const SUCCESS_BY_RESULT_TIER: Record<number, number> = {

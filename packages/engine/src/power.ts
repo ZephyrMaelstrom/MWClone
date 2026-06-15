@@ -1,6 +1,6 @@
-import { ESSENCES, GRADE_MULT } from "./config/essences.js";
-import { TIERS } from "./config/tiers.js";
-import type { Critter, EssenceId, Grade, Tier } from "./types.js";
+import { ESSENCES, GRADE_MULT } from "./config/essences";
+import { TIERS } from "./config/tiers";
+import type { Critter, EssenceId, Grade, Tier } from "./types";
 
 export function tierPower(tier: Tier): number {
   return TIERS[tier].power;

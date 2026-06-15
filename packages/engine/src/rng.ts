@@ -1,4 +1,4 @@
-import type { Rng } from "./types.js";
+import type { Rng } from "./types";
 
 /** Deterministic seeded RNG (mulberry32). Same seed -> same sequence. */
 export function mulberry32(seed: number): Rng {

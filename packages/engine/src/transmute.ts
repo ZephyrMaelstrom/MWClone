@@ -1,13 +1,13 @@
-import { FUSION_GRID, ESSENCE_IDS } from "./config/essences.js";
-import { MAX_TRANSMUTE_TIER } from "./config/tiers.js";
+import { FUSION_GRID, ESSENCE_IDS } from "./config/essences";
+import { MAX_TRANSMUTE_TIER } from "./config/tiers";
 import {
   TRANSMUTE,
   catalystCost,
   gristCost,
   recoverCost,
   successRate,
-} from "./config/transmute.js";
-import type { EssenceId, Grade, Rng, Tier } from "./types.js";
+} from "./config/transmute";
+import type { EssenceId, Grade, Rng, Tier } from "./types";
 
 export interface TransmuteInputs {
   /** Both inputs must share this tier. */

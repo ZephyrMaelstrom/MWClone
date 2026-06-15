@@ -1,4 +1,4 @@
-import { APPARATUS, ECONOMY, PROGRESSION, RESOURCES } from "./config/economy.js";
+import { APPARATUS, ECONOMY, PROGRESSION, RESOURCES } from "./config/economy";
 
 /** Cost to buy the nth-of-type apparatus (owned = how many of this type already built). */
 export function apparatusCost(baseCost: number, ownedOfType: number): number {

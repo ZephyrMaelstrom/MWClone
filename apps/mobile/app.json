@@ -19,7 +19,6 @@
         "backgroundColor": "#1c1410"
       }
     },
-    "plugins": ["react-native-reanimated/plugin"],
     "extra": {
       "apiBaseUrl": "http://localhost:3000"
     }

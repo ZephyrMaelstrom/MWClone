@@ -1,5 +1,5 @@
-import { critterStats } from "./power.js";
-import type { Critter, EssenceId, Rng, Tier } from "./types.js";
+import { critterStats } from "./power";
+import type { Critter, EssenceId, Rng, Tier } from "./types";
 
 /** Team-wide leader multipliers, scaled by leader tier (2 -> ~+1%, 11 -> ~+12%). */
 export function leaderAtkBonus(leaderEssence: EssenceId, leaderTier: Tier): number {

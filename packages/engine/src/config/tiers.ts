@@ -1,4 +1,4 @@
-import type { Tier, TierDef } from "../types.js";
+import type { Tier, TierDef } from "../types";
 
 /**
  * The 11-tier transmutation ladder (Dross -> Magnum Opus).
