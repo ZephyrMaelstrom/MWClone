@@ -67,6 +67,8 @@ export interface PlayerState {
   leaderId?: string;
   broodIds: string[]; // critters fielded for offense/defense
   createdTs: number;
+  covenId?: string;
+  bossDamageTotal: number; // lifetime World Boss damage (leaderboard)
   // ghost (bot rival) fields
   isGhost?: boolean;
   ghostBaselineGrist?: number; // ghosts refill to this after being raided
@@ -92,6 +94,7 @@ export function normalize(p: PlayerState): void {
   if (!p.daily) p.daily = freshDaily();
   if (!p.attendance) p.attendance = { lastClaim: "", day: 0 };
   if (!p.roulette) p.roulette = { lastSpin: "" };
+  if (p.bossDamageTotal == null) p.bossDamageTotal = 0;
 }
 
 export function newCritter(tier: Tier, essence: EssenceId, grade: Grade = "normal"): Critter {
@@ -139,6 +142,7 @@ function freshState(id: string, name: string, now: number): PlayerState {
     critters: starters,
     broodIds: starters.map((c) => c.id),
     createdTs: now,
+    bossDamageTotal: 0,
   };
 }
 

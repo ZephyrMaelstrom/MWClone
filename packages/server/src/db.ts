@@ -30,6 +30,11 @@ function openDb(): Database {
       data    TEXT NOT NULL,
       updated INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS covens (
+      id      TEXT PRIMARY KEY,
+      data    TEXT NOT NULL,
+      updated INTEGER NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS meta (
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -61,8 +66,31 @@ export function dbDelete(id: string): void {
   deleteStmt.run(id);
 }
 
+// --- Covens (mirrors the players table) ---
+const covenUpsertStmt = db.prepare(
+  `INSERT INTO covens (id, data, updated) VALUES (?, ?, ?)
+   ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated = excluded.updated`,
+);
+const covenAllStmt = db.prepare(`SELECT data FROM covens`);
+const covenDeleteStmt = db.prepare(`DELETE FROM covens WHERE id = ?`);
+const covenClearStmt = db.prepare(`DELETE FROM covens`);
+
+export function dbCovenUpsert(id: string, data: unknown): void {
+  covenUpsertStmt.run(id, JSON.stringify(data), Date.now());
+}
+
+export function dbCovenLoadAll<T>(): T[] {
+  const rows = covenAllStmt.all() as { data: string }[];
+  return rows.map((r) => JSON.parse(r.data) as T);
+}
+
+export function dbCovenDelete(id: string): void {
+  covenDeleteStmt.run(id);
+}
+
 export function dbClear(): void {
   clearStmt.run();
+  covenClearStmt.run();
   metaClearStmt.run();
 }
 

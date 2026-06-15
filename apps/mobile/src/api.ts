@@ -46,6 +46,26 @@ export interface PlayerState {
   critters: Critter[];
   broodIds: string[];
   leaderId?: string;
+  covenId?: string;
+  maxFielded: number;
+  bossDamageTotal: number;
+}
+
+export interface CovenView {
+  id: string;
+  name: string;
+  code: string;
+  leaderId: string;
+  members: { id: string; name: string; level: number; power: number }[];
+  boss: { hp: number; maxHp: number; expiresAt: number } | null;
+}
+
+export interface LeaderboardRow {
+  id: string;
+  name: string;
+  level: number;
+  isGhost: boolean;
+  value: number;
 }
 
 export interface BossView {
@@ -209,6 +229,23 @@ export const api = {
       `/players/${id}/egg`,
       { type },
     ),
+  coven: (id: string) => req<CovenView | null>("GET", `/players/${id}/coven`),
+  createCoven: (id: string, name: string) =>
+    req<{ coven: CovenView | null; state: PlayerState }>("POST", `/players/${id}/coven`, { name }),
+  joinCoven: (id: string, code: string) =>
+    req<{ coven: CovenView | null; state: PlayerState }>("POST", `/players/${id}/coven/join`, { code }),
+  leaveCoven: (id: string) =>
+    req<{ coven: CovenView | null; state: PlayerState }>("POST", `/players/${id}/coven/leave`),
+  summonHomunculus: (id: string) =>
+    req<{ coven: CovenView | null; state: PlayerState }>("POST", `/players/${id}/coven/homunculus/summon`),
+  attackHomunculus: (id: string) =>
+    req<{
+      result: { damage: number; bossHp: number; bossMaxHp: number; defeated: boolean; reward?: Reward };
+      coven: CovenView | null;
+      state: PlayerState;
+    }>("POST", `/players/${id}/coven/homunculus/attack`),
+  leaderboard: (type: "level" | "power" | "boss") =>
+    req<{ type: string; rows: LeaderboardRow[] }>("GET", `/leaderboard?type=${type}`),
   events: () => req<GameEvent[]>("GET", "/events"),
   adminStartEvent: (
     token: string,

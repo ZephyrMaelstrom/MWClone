@@ -43,6 +43,17 @@ import {
 } from "./daily.js";
 import { attackBoss, bossView } from "./worldboss.js";
 import { activeEvents, clearEvents, startEvent, type EventType } from "./events.js";
+import {
+  attackHomunculus,
+  covenView,
+  covenmateCount,
+  createCoven,
+  getCoven,
+  joinCoven,
+  leaveCoven,
+  summonHomunculus,
+} from "./covens.js";
+import { broodTotals, critterStats, maxFielded } from "@cc/engine";
 import type { SkillKey } from "./store.js";
 
 const now = () => Date.now();
@@ -89,6 +100,9 @@ function publicState(p: PlayerState) {
     critters: p.critters,
     broodIds: p.broodIds,
     leaderId: p.leaderId,
+    covenId: p.covenId,
+    maxFielded: maxFielded(p.level, covenmateCount(p)),
+    bossDamageTotal: p.bossDamageTotal,
   };
 }
 
@@ -269,6 +283,83 @@ export function buildServer(): FastifyInstance {
     if (!requireAdmin(req, reply)) return reply;
     clearEvents();
     return [];
+  });
+
+  // --- Covens (social) ---
+  const covenResponse = (p: PlayerState) => {
+    const c = getCoven(p.covenId);
+    return { coven: c ? covenView(c) : null, state: publicState(p) };
+  };
+
+  app.get("/players/:id/coven", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const c = getCoven(p.covenId);
+    return c ? covenView(c) : null;
+  });
+
+  app.post("/players/:id/coven", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { name?: string };
+    return guard(reply, () => {
+      createCoven(p, body.name ?? "New Coven", now());
+      return covenResponse(p);
+    });
+  });
+
+  app.post("/players/:id/coven/join", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { code?: string };
+    if (!body.code) return reply.code(400).send({ error: "code required" });
+    return guard(reply, () => {
+      joinCoven(p, body.code!, now());
+      return covenResponse(p);
+    });
+  });
+
+  app.post("/players/:id/coven/leave", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    leaveCoven(p);
+    return covenResponse(p);
+  });
+
+  app.post("/players/:id/coven/homunculus/summon", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    return guard(reply, () => {
+      summonHomunculus(p, now());
+      return covenResponse(p);
+    });
+  });
+
+  app.post("/players/:id/coven/homunculus/attack", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    return guard(reply, () => {
+      const result = attackHomunculus(p, now());
+      return { result, ...covenResponse(p) };
+    });
+  });
+
+  // --- Leaderboards (players + ghosts so boards are populated) ---
+  app.get("/leaderboard", async (req) => {
+    const type = ((req.query as { type?: string }).type ?? "level") as "level" | "power" | "boss";
+    const rows = allPlayers().map((p) => {
+      let value = p.level;
+      if (type === "power") {
+        const brood = p.critters.filter((c) => p.broodIds.includes(c.id));
+        const t = broodTotals(brood, p.critters.find((c) => c.id === p.leaderId));
+        value = t.atk + t.def;
+      } else if (type === "boss") {
+        value = p.bossDamageTotal ?? 0;
+      }
+      return { id: p.id, name: p.name, level: p.level, isGhost: !!p.isGhost, value };
+    });
+    rows.sort((a, b) => b.value - a.value);
+    return { type, rows: rows.slice(0, 20) };
   });
 
   // World Boss — "The Aberration" (shared co-op).

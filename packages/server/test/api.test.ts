@@ -248,6 +248,38 @@ describe("P1: daily loop, eggs, boss endpoint", () => {
   });
 });
 
+describe("P2: coven + leaderboard endpoints", () => {
+  it("creates a coven and a second player joins by code", async () => {
+    const a = await createPlayer("A"); // starts with 1000 Grist (the founding cost)
+    const created = await app.inject({
+      method: "POST",
+      url: `/players/${a.id}/coven`,
+      payload: { name: "Alchemists United" },
+    });
+    expect(created.statusCode).toBe(200);
+    const code = created.json().coven.code;
+    expect(code).toHaveLength(6);
+
+    const b = await createPlayer("B");
+    const joined = await app.inject({
+      method: "POST",
+      url: `/players/${b.id}/coven/join`,
+      payload: { code },
+    });
+    expect(joined.statusCode).toBe(200);
+    expect(joined.json().coven.members.length).toBe(2);
+  });
+
+  it("serves a leaderboard", async () => {
+    await createPlayer("A");
+    const res = await app.inject({ method: "GET", url: "/leaderboard?type=level" });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.type).toBe("level");
+    expect(Array.isArray(body.rows)).toBe(true);
+  });
+});
+
 describe("events (public + admin)", () => {
   it("admin routes require ADMIN_TOKEN", async () => {
     delete process.env.ADMIN_TOKEN;

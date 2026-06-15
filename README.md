@@ -9,7 +9,7 @@ metals toward the Magnum Opus, and raid rival labs.
 ## Monorepo layout (pnpm workspace)
 ```
 packages/engine   @cc/engine  — shared game logic (config-as-data + pure fns), 31 tests
-packages/server   @cc/server  — Fastify API + SQLite + reset + ghost rivals, 11 tests
+packages/server   @cc/server  — Fastify API + SQLite + ghosts + covens + events, 42 tests
 apps/mobile       @cc/mobile  — Expo / React Native client (Crucible centerpiece)
 docs/             design + tuning + research + art direction
 ```
@@ -47,6 +47,7 @@ codebase later (EAS Build).
 - [x] Ghost rivals (6 "Wandering Alchemists", difficulty ladder, auto-refill) so Raid is never empty
 - [x] P0: brood/leader management, apparatus shop, skill points, vault
 - [x] P1: World Boss (The Aberration), daily loop (missions/attendance/roulette), gacha eggs, events engine
+- [x] P2: Covens (invite codes, packmate fielded-bonus, Homunculus co-op boss) + leaderboards
 - [ ] Deploy to Render and share the link with the group
 - [ ] Android APK via EAS Build
 - [ ] Economy & combat numbers playtested

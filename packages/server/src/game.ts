@@ -28,6 +28,7 @@ import { type PlayerState, type SkillKey, newCritter } from "./store.js";
 import { GameError } from "./errors.js";
 import { recordDaily } from "./daily.js";
 import { mergeSuccessBonus, questGristMultiplier } from "./events.js";
+import { covenmateCount } from "./covens.js";
 
 export { GameError };
 
@@ -114,7 +115,7 @@ const power = (c: Critter) => {
 
 /** Fill empty brood slots with your strongest un-fielded critters. */
 export function autoField(p: PlayerState): void {
-  const max = maxFielded(p.level, 0);
+  const max = maxFielded(p.level, covenmateCount(p));
   const inBrood = new Set(p.broodIds);
   const candidates = p.critters
     .filter((c) => !inBrood.has(c.id))
@@ -136,7 +137,7 @@ export function ensureLeader(p: PlayerState): void {
 export function setBrood(p: PlayerState, broodIds: string[], leaderId?: string): void {
   const owned = new Set(p.critters.map((c) => c.id));
   const valid = broodIds.filter((id) => owned.has(id));
-  const max = maxFielded(p.level, 0);
+  const max = maxFielded(p.level, covenmateCount(p));
   if (valid.length > max) throw new GameError(`Your brood can hold at most ${max} critters`);
   p.broodIds = [...new Set(valid)];
   if (leaderId && p.broodIds.includes(leaderId)) p.leaderId = leaderId;

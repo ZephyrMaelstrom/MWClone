@@ -95,6 +95,7 @@ export function attackBoss(p: PlayerState, mode: number, now: number): BossAttac
 
   b.hp -= damage;
   b.damage[p.id] = (b.damage[p.id] ?? 0) + damage;
+  p.bossDamageTotal = (p.bossDamageTotal ?? 0) + damage;
   recordDaily(p, "bossHits", now);
 
   let defeated = false;
