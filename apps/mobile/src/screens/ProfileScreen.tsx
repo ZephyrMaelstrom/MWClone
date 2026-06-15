@@ -1,55 +1,48 @@
 import React, { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useGame } from "../state";
+import { confirmDialog, notify } from "../dialog";
 import { theme } from "../theme";
 
 export function ProfileScreen() {
   const { player, resetProgress, newProfile } = useGame();
   const [busy, setBusy] = useState(false);
 
-  const confirmReset = () => {
-    Alert.alert(
+  const confirmReset = async () => {
+    const ok = await confirmDialog(
       "Reset progress?",
       "This wipes your critters, Grist and levels back to a fresh start. Your profile id is kept. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reset",
-          style: "destructive",
-          onPress: async () => {
-            setBusy(true);
-            try {
-              await resetProgress();
-              Alert.alert("Fresh start", "Your lab has been wiped clean.");
-            } catch (e) {
-              Alert.alert("Could not reset", (e as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          },
-        },
-      ],
+      "Reset",
+      true,
     );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await resetProgress();
+      notify("Fresh start", "Your lab has been wiped clean.");
+    } catch (e) {
+      notify("Could not reset", (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const confirmNew = () => {
-    Alert.alert("Start a new profile?", "Abandons this profile and creates a brand-new one.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "New profile",
-        style: "destructive",
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await newProfile();
-          } catch (e) {
-            Alert.alert("Could not create", (e as Error).message);
-          } finally {
-            setBusy(false);
-          }
-        },
-      },
-    ]);
+  const confirmNew = async () => {
+    const ok = await confirmDialog(
+      "Start a new profile?",
+      "Abandons this profile and creates a brand-new one.",
+      "New profile",
+      true,
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await newProfile();
+    } catch (e) {
+      notify("Could not create", (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

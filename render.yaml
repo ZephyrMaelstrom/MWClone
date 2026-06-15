@@ -1,13 +1,24 @@
-# Render.com blueprint — one-click deploy from GitHub (no PC needed).
-# render.com -> New -> Blueprint -> connect this repo. Free plan.
+# Render.com blueprint — one-click deploy from GitHub.
+# render.com -> New -> Blueprint -> connect this repo.
+#
+# PERSISTENCE: the SQLite file lives on a mounted persistent disk so progress
+# survives redeploys/restarts. Render disks require a paid instance (Starter+,
+# ~$7/mo). To stay on the FREE plan instead, set `plan: free` and delete the
+# `disk:` block + the CC_DB_PATH env var below — progress then resets on redeploy.
 services:
   - type: web
     name: crucible-critters
     runtime: docker
-    plan: free
+    plan: starter
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     autoDeploy: true
+    disk:
+      name: cc-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_OPTIONS
         value: --experimental-sqlite
+      - key: CC_DB_PATH
+        value: /var/data/cc.sqlite

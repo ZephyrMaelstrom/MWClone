@@ -26,6 +26,12 @@ export interface PlayerState {
   energy: number;
   stamina: number;
   hp: number;
+  energyMax: number;
+  staminaMax: number;
+  hpMax: number;
+  energyNext: number; // seconds to next +1 energy
+  staminaNext: number;
+  hpNext: number;
   skillPoints: number;
   apparatus: Record<string, number>;
   pendingIdleGrist: number;

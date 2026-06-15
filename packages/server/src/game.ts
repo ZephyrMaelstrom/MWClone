@@ -139,11 +139,31 @@ export interface QuestOutcome {
 
 const QUEST_ENERGY = 5;
 
+/** Current value, cap, and seconds until the next +1 for a regenerating resource. */
+export function resourceView(
+  p: PlayerState,
+  key: "energy" | "stamina" | "hp",
+  now: number,
+): { value: number; max: number; secondsToNext: number } {
+  const max = resourceCap(key, p.level);
+  const value = p[key];
+  let secondsToNext = 0;
+  if (value < max) {
+    const sec = RESOURCES[key].secondsPerPoint;
+    const elapsed = Math.max(0, Math.floor((now - p[`${key}Ts`]) / 1000));
+    secondsToNext = sec - (elapsed % sec);
+  }
+  return { value, max, secondsToNext };
+}
+
 export function doQuest(p: PlayerState, now: number): QuestOutcome {
   regenResources(p, now);
+  const wasFull = p.energy >= resourceCap("energy", p.level);
   if (p.energy < QUEST_ENERGY) throw new GameError("Not enough Energy");
   p.energy -= QUEST_ENERGY;
-  if (p.energy < resourceCap("energy", p.level)) p.energyTs = now;
+  // Start the regen timer only if we spent from a full pool; otherwise keep the
+  // existing timer so partial progress toward the next point isn't lost.
+  if (wasFull) p.energyTs = now;
 
   const rng = rngFactory();
   const grist = 200 + Math.floor(rng() * 300);
@@ -172,9 +192,10 @@ const RAID_STAMINA = 1;
 
 export function doRaid(attacker: PlayerState, defender: PlayerState, now: number): RaidOutcome {
   regenResources(attacker, now);
+  const wasFull = attacker.stamina >= resourceCap("stamina", attacker.level);
   if (attacker.stamina < RAID_STAMINA) throw new GameError("Not enough Stamina");
   attacker.stamina -= RAID_STAMINA;
-  attacker.staminaTs = now;
+  if (wasFull) attacker.staminaTs = now;
 
   const atkBrood = attacker.critters.filter((c) => attacker.broodIds.includes(c.id));
   const defBrood = defender.critters.filter((c) => defender.broodIds.includes(c.id));

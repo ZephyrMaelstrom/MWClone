@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { api } from "../api";
 import { useGame } from "../state";
+import { notify } from "../dialog";
 import { theme } from "../theme";
 
 interface Rival {
@@ -31,14 +32,14 @@ export function RaidScreen() {
     try {
       const { outcome, state } = await api.raid(player.id, defenderId);
       setPlayer(state);
-      Alert.alert(
+      notify(
         outcome.win ? "Victory!" : "Repelled",
         outcome.win
           ? `You raided ${name}'s lab and took ${outcome.gristStolen.toLocaleString()} Grist.`
           : `${name}'s wards held. No Grist taken.`,
       );
     } catch (e) {
-      Alert.alert("Cannot raid", (e as Error).message);
+      notify("Cannot raid", (e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -48,7 +49,10 @@ export function RaidScreen() {
     <View style={styles.container}>
       <View style={styles.panel}>
         <Text style={styles.dim}>Stamina</Text>
-        <Text style={styles.big}>{player?.stamina ?? 0}</Text>
+        <Text style={styles.big}>
+          {player?.stamina ?? 0}
+          <Text style={styles.max}> / {player?.staminaMax ?? 0}</Text>
+        </Text>
         <Text style={styles.dim}>Friendly raids: win = 10% of their un-vaulted Grist. Critters are never lost.</Text>
       </View>
       <FlatList
@@ -87,6 +91,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.space(2),
   },
   big: { color: theme.colors.text, fontSize: 22, fontWeight: "800" },
+  max: { color: theme.colors.textDim, fontSize: 16, fontWeight: "600" },
   dim: { color: theme.colors.textDim, marginTop: 4 },
   rivalRow: {
     flexDirection: "row",

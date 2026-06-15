@@ -51,6 +51,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     await createAndStore();
   }, [createAndStore]);
 
+  // Poll for fresh state so resource regen (energy/stamina/HP) ticks up live.
+  useEffect(() => {
+    if (!player) return;
+    const t = setInterval(() => {
+      void refresh();
+    }, 15000);
+    return () => clearInterval(t);
+  }, [player?.id, refresh]);
+
   useEffect(() => {
     (async () => {
       try {

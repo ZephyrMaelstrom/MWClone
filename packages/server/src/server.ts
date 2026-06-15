@@ -22,13 +22,18 @@ import {
   doTransmute,
   pendingIdleGrist,
   regenResources,
+  resourceView,
 } from "./game.js";
 
 const now = () => Date.now();
 
 /** Public projection of player state (everything the client needs). */
 function publicState(p: PlayerState) {
-  regenResources(p, now());
+  const t = now();
+  regenResources(p, t);
+  const energy = resourceView(p, "energy", t);
+  const stamina = resourceView(p, "stamina", t);
+  const hp = resourceView(p, "hp", t);
   return {
     id: p.id,
     name: p.name,
@@ -43,6 +48,12 @@ function publicState(p: PlayerState) {
     energy: p.energy,
     stamina: p.stamina,
     hp: p.hp,
+    energyMax: energy.max,
+    staminaMax: stamina.max,
+    hpMax: hp.max,
+    energyNext: energy.secondsToNext,
+    staminaNext: stamina.secondsToNext,
+    hpNext: hp.secondsToNext,
     skillPoints: p.skillPoints,
     apparatus: p.apparatus,
     pendingIdleGrist: pendingIdleGrist(p, now()),

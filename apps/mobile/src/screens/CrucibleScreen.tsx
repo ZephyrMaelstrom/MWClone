@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { TIERS, canTransmute, catalystCost, gristCost, successRate, type Critter, type Tier } from "@cc/engine";
 import { api, type TransmuteOutcome } from "../api";
 import { useGame } from "../state";
 import { theme } from "../theme";
 import { CritterCard } from "../components/CritterCard";
 import { CrucibleArt } from "../components/CrucibleArt";
+import { notify } from "../dialog";
 
 export function CrucibleScreen() {
   const { player, setPlayer } = useGame();
@@ -46,7 +47,7 @@ export function CrucibleScreen() {
       setLast(outcome);
       setPicked([]);
     } catch (e) {
-      Alert.alert("The brew refused", (e as Error).message);
+      notify("The brew refused", (e as Error).message);
     } finally {
       setBusy(false);
     }
