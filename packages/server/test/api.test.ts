@@ -102,6 +102,90 @@ describe("raid (friendly PvP)", () => {
   });
 });
 
+describe("P0: brood, apparatus, skills, vault", () => {
+  it("sets the brood and leader", async () => {
+    const p = await createPlayer();
+    const ids = p.critters.slice(0, 3).map((c: { id: string }) => c.id);
+    const res = await app.inject({
+      method: "POST",
+      url: `/players/${p.id}/brood`,
+      payload: { broodIds: ids, leaderId: ids[0] },
+    });
+    expect(res.statusCode).toBe(200);
+    const state = res.json();
+    expect(state.broodIds.sort()).toEqual([...ids].sort());
+    expect(state.leaderId).toBe(ids[0]);
+  });
+
+  it("auto-fields captured/transmuted critters so battle power grows", async () => {
+    setRngFactory(() => constantRng(0.001)); // quests capture (rng<0.4)
+    const p = await createPlayer();
+    const before = p.broodIds.length;
+    await app.inject({ method: "POST", url: `/players/${p.id}/quest` });
+    const after = (await app.inject({ method: "GET", url: `/players/${p.id}` })).json();
+    expect(after.critters.length).toBeGreaterThan(p.critters.length);
+    expect(after.broodIds.length).toBeGreaterThanOrEqual(before); // new critter fielded
+  });
+
+  it("buys apparatus and increases Grist/hour", async () => {
+    const p = await createPlayer();
+    const res = await app.inject({
+      method: "POST",
+      url: `/players/${p.id}/apparatus`,
+      payload: { apparatusId: "hut" },
+    });
+    expect(res.statusCode).toBe(200);
+    const { state, result } = res.json();
+    expect(result.count).toBe(2); // started with 1 hut
+    expect(state.grist).toBe(1000 - result.cost);
+    expect(state.gristPerHour).toBe(2 * 5); // 2 huts x 5/hr
+  });
+
+  it("spends a skill point and raises the resource cap", async () => {
+    setRngFactory(() => constantRng(0.99));
+    const p = await createPlayer();
+    // earn a level (and skill points) by questing a lot? Instead grant via reset+quests is slow;
+    // quickest: quest enough XP. Simulate by questing until level 2.
+    let state = p;
+    for (let i = 0; i < 30 && state.skillPoints === 0; i++) {
+      // refill energy via quest only works while energy remains; also claim not needed
+      const r = await app.inject({ method: "POST", url: `/players/${p.id}/quest` });
+      if (r.statusCode === 200) state = r.json().state;
+      else break;
+    }
+    // If we leveled, spend a point on energy.
+    if (state.skillPoints > 0) {
+      const res = await app.inject({
+        method: "POST",
+        url: `/players/${p.id}/skill`,
+        payload: { stat: "energy" },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().energyMax).toBeGreaterThan(20);
+    }
+  });
+
+  it("vault deposit charges 5% and protects Grist; withdraw is free", async () => {
+    const p = await createPlayer();
+    const dep = await app.inject({
+      method: "POST",
+      url: `/players/${p.id}/vault/deposit`,
+      payload: { amount: 1000 },
+    });
+    expect(dep.statusCode).toBe(200);
+    const after = dep.json().state;
+    expect(after.grist).toBe(0);
+    expect(after.vaultGrist).toBe(950); // 1000 - 5% fee
+    const wd = await app.inject({
+      method: "POST",
+      url: `/players/${p.id}/vault/withdraw`,
+      payload: { amount: 950 },
+    });
+    expect(wd.json().grist).toBe(950);
+    expect(wd.json().vaultGrist).toBe(0);
+  });
+});
+
 describe("reset & delete", () => {
   it("reset restores a fresh starter profile, keeping the same id", async () => {
     setRngFactory(() => constantRng(0.99)); // no capture

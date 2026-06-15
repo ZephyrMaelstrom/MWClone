@@ -33,11 +33,30 @@ export interface PlayerState {
   staminaNext: number;
   hpNext: number;
   skillPoints: number;
+  skills: { attack: number; defense: number; hp: number; energy: number; stamina: number };
   apparatus: Record<string, number>;
+  gristPerHour: number;
   pendingIdleGrist: number;
   critters: Critter[];
   broodIds: string[];
   leaderId?: string;
+}
+
+export type SkillKey = "attack" | "defense" | "hp" | "energy" | "stamina";
+
+export interface ApparatusDef {
+  id: string;
+  name: string;
+  gristPerHour: number;
+  baseCost: number;
+}
+
+export interface Catalog {
+  tiers: Record<string, { tier: number; name: string; power: number; combinable: boolean }>;
+  essences: Record<string, { id: string; name: string; atkParts: number; defParts: number }>;
+  apparatus: ApparatusDef[];
+  apparatusCostGrowth: number;
+  vaultFeeFraction: number;
 }
 
 export interface TransmuteOutcome {
@@ -77,6 +96,27 @@ export const api = {
       catalyst,
     }),
   reset: (id: string) => req<PlayerState>("POST", `/players/${id}/reset`),
+  catalog: () => req<Catalog>("GET", "/catalog"),
+  setBrood: (id: string, broodIds: string[], leaderId?: string) =>
+    req<PlayerState>("POST", `/players/${id}/brood`, { broodIds, leaderId }),
+  setLeader: (id: string, leaderId: string) =>
+    req<PlayerState>("POST", `/players/${id}/leader`, { leaderId }),
+  buyApparatus: (id: string, apparatusId: string) =>
+    req<{ result: { cost: number; count: number }; state: PlayerState }>(
+      "POST",
+      `/players/${id}/apparatus`,
+      { apparatusId },
+    ),
+  spendSkill: (id: string, stat: SkillKey) =>
+    req<PlayerState>("POST", `/players/${id}/skill`, { stat }),
+  vaultDeposit: (id: string, amount: number) =>
+    req<{ result: { deposited: number; fee: number }; state: PlayerState }>(
+      "POST",
+      `/players/${id}/vault/deposit`,
+      { amount },
+    ),
+  vaultWithdraw: (id: string, amount: number) =>
+    req<PlayerState>("POST", `/players/${id}/vault/withdraw`, { amount }),
   raid: (attacker: string, defender: string) =>
     req<{ outcome: { win: boolean; gristStolen: number }; state: PlayerState }>("POST", "/raid", {
       attacker,

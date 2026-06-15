@@ -2,11 +2,15 @@ import {
   type Critter,
   type Rng,
   type Tier,
+  APPARATUS,
+  apparatusCost,
   broodTotals,
   canTransmute,
   catalystCost,
+  critterStats,
   gristCost,
   gristPerHour,
+  maxFielded,
   mulberry32,
   offlineGrist,
   raidSteal,
@@ -15,10 +19,11 @@ import {
   regenPoints,
   RESOURCES,
   transmute,
+  vaultFee,
   xpForLevel,
   PROGRESSION,
 } from "@cc/engine";
-import { type PlayerState, newCritter } from "./store.js";
+import { type PlayerState, type SkillKey, newCritter } from "./store.js";
 
 /** Server-side RNG (fresh sequence per action). Override in tests for determinism. */
 let rngFactory: () => Rng = () => mulberry32((Math.random() * 2 ** 32) >>> 0);
@@ -28,25 +33,49 @@ export function setRngFactory(f: () => Rng): void {
 
 export class GameError extends Error {}
 
+/** Effective cap for a regenerating resource = base(level) + skill points spent. */
+export function cap(p: PlayerState, key: "energy" | "stamina" | "hp"): number {
+  return resourceCap(key, p.level) + (p.skills?.[key] ?? 0);
+}
+
 /** Apply pending resource regen up to cap, mutating the player. */
 export function regenResources(p: PlayerState, now: number): void {
   for (const key of ["energy", "stamina", "hp"] as const) {
     const tsKey = `${key}Ts` as const;
-    const cap = resourceCap(key, p.level);
+    const c = cap(p, key);
     const elapsed = Math.max(0, now - p[tsKey]);
     const gained = regenPoints(key, Math.floor(elapsed / 1000));
-    if (gained > 0 && p[key] < cap) {
-      p[key] = Math.min(cap, p[key] + gained);
-      // advance timestamp by exactly the consumed whole-second buckets
+    if (gained > 0 && p[key] < c) {
+      p[key] = Math.min(c, p[key] + gained);
       p[tsKey] = p[tsKey] + gained * RESOURCES[key].secondsPerPoint * 1000;
     }
-    if (p[key] >= cap) p[tsKey] = now;
+    if (p[key] >= c) p[tsKey] = now;
   }
 }
 
+/** Current value, cap, and seconds until the next +1 for a regenerating resource. */
+export function resourceView(
+  p: PlayerState,
+  key: "energy" | "stamina" | "hp",
+  now: number,
+): { value: number; max: number; secondsToNext: number } {
+  const max = cap(p, key);
+  const value = p[key];
+  let secondsToNext = 0;
+  if (value < max) {
+    const sec = RESOURCES[key].secondsPerPoint;
+    const elapsed = Math.max(0, Math.floor((now - p[`${key}Ts`]) / 1000));
+    secondsToNext = sec - (elapsed % sec);
+  }
+  return { value, max, secondsToNext };
+}
+
 export function pendingIdleGrist(p: PlayerState, now: number): number {
-  const perHour = gristPerHour(p.apparatus);
-  return offlineGrist(perHour, Math.floor((now - p.lastClaimTs) / 1000));
+  return offlineGrist(gristPerHour(p.apparatus), Math.floor((now - p.lastClaimTs) / 1000));
+}
+
+export function gristIncomePerHour(p: PlayerState): number {
+  return gristPerHour(p.apparatus);
 }
 
 export function claimIdle(p: PlayerState, now: number): number {
@@ -61,12 +90,60 @@ function grantXp(p: PlayerState, xp: number): void {
   while (p.xp >= xpForLevel(p.level + 1)) {
     p.level += 1;
     p.skillPoints += PROGRESSION.skillPointsPerLevel;
-    // level-up refills resources
-    p.energy = resourceCap("energy", p.level);
-    p.stamina = resourceCap("stamina", p.level);
-    p.hp = resourceCap("hp", p.level);
+    p.energy = cap(p, "energy");
+    p.stamina = cap(p, "stamina");
+    p.hp = cap(p, "hp");
   }
 }
+
+// ---------------------------------------------------------------------------
+// Brood & leader
+// ---------------------------------------------------------------------------
+
+const power = (c: Critter) => {
+  const s = critterStats(c);
+  return s.atk + s.def;
+};
+
+/** Fill empty brood slots with your strongest un-fielded critters. */
+export function autoField(p: PlayerState): void {
+  const max = maxFielded(p.level, 0);
+  const inBrood = new Set(p.broodIds);
+  const candidates = p.critters
+    .filter((c) => !inBrood.has(c.id))
+    .sort((a, b) => power(b) - power(a));
+  for (const c of candidates) {
+    if (p.broodIds.length >= max) break;
+    p.broodIds.push(c.id);
+  }
+}
+
+/** Ensure the leader is a fielded critter (default: strongest fielded). */
+export function ensureLeader(p: PlayerState): void {
+  if (p.leaderId && p.broodIds.includes(p.leaderId)) return;
+  const brood = p.critters.filter((c) => p.broodIds.includes(c.id)).sort((a, b) => power(b) - power(a));
+  p.leaderId = brood[0]?.id;
+}
+
+/** Manually set the fielded brood (and optionally the leader). */
+export function setBrood(p: PlayerState, broodIds: string[], leaderId?: string): void {
+  const owned = new Set(p.critters.map((c) => c.id));
+  const valid = broodIds.filter((id) => owned.has(id));
+  const max = maxFielded(p.level, 0);
+  if (valid.length > max) throw new GameError(`Your brood can hold at most ${max} critters`);
+  p.broodIds = [...new Set(valid)];
+  if (leaderId && p.broodIds.includes(leaderId)) p.leaderId = leaderId;
+  ensureLeader(p);
+}
+
+export function setLeader(p: PlayerState, leaderId: string): void {
+  if (!p.broodIds.includes(leaderId)) throw new GameError("Leader must be a fielded critter");
+  p.leaderId = leaderId;
+}
+
+// ---------------------------------------------------------------------------
+// Transmute
+// ---------------------------------------------------------------------------
 
 export interface TransmuteOutcome {
   success: boolean;
@@ -103,7 +180,6 @@ export function doTransmute(
     rngFactory(),
   );
 
-  // Spend & consume inputs.
   p.grist -= grist;
   p.elixir -= elixir;
   removeCritters(p, [a.id, b.id]);
@@ -112,6 +188,9 @@ export function doTransmute(
   made.speciesId = `${result.outcomeEssence}-t${result.outcomeTier}`;
   p.critters.push(made);
   p.residueShards += result.residueShards;
+
+  autoField(p);
+  ensureLeader(p);
 
   return {
     success: result.success,
@@ -131,6 +210,10 @@ function removeCritters(p: PlayerState, ids: string[]): void {
   if (p.leaderId && set.has(p.leaderId)) p.leaderId = undefined;
 }
 
+// ---------------------------------------------------------------------------
+// Quest
+// ---------------------------------------------------------------------------
+
 export interface QuestOutcome {
   gristGained: number;
   xpGained: number;
@@ -139,30 +222,11 @@ export interface QuestOutcome {
 
 const QUEST_ENERGY = 5;
 
-/** Current value, cap, and seconds until the next +1 for a regenerating resource. */
-export function resourceView(
-  p: PlayerState,
-  key: "energy" | "stamina" | "hp",
-  now: number,
-): { value: number; max: number; secondsToNext: number } {
-  const max = resourceCap(key, p.level);
-  const value = p[key];
-  let secondsToNext = 0;
-  if (value < max) {
-    const sec = RESOURCES[key].secondsPerPoint;
-    const elapsed = Math.max(0, Math.floor((now - p[`${key}Ts`]) / 1000));
-    secondsToNext = sec - (elapsed % sec);
-  }
-  return { value, max, secondsToNext };
-}
-
 export function doQuest(p: PlayerState, now: number): QuestOutcome {
   regenResources(p, now);
-  const wasFull = p.energy >= resourceCap("energy", p.level);
+  const wasFull = p.energy >= cap(p, "energy");
   if (p.energy < QUEST_ENERGY) throw new GameError("Not enough Energy");
   p.energy -= QUEST_ENERGY;
-  // Start the regen timer only if we spent from a full pool; otherwise keep the
-  // existing timer so partial progress toward the next point isn't lost.
   if (wasFull) p.energyTs = now;
 
   const rng = rngFactory();
@@ -178,8 +242,55 @@ export function doQuest(p: PlayerState, now: number): QuestOutcome {
     captured = newCritter(2, e);
     p.critters.push(captured);
   }
+
+  autoField(p);
+  ensureLeader(p);
   return { gristGained: grist, xpGained: xp, captured };
 }
+
+// ---------------------------------------------------------------------------
+// Apparatus, skills, vault
+// ---------------------------------------------------------------------------
+
+export function buyApparatus(p: PlayerState, apparatusId: string): { cost: number; count: number } {
+  const def = APPARATUS.find((a) => a.id === apparatusId);
+  if (!def) throw new GameError("Unknown apparatus");
+  const owned = p.apparatus[apparatusId] ?? 0;
+  const cost = apparatusCost(def.baseCost, owned);
+  if (p.grist < cost) throw new GameError("Not enough Grist");
+  p.grist -= cost;
+  p.apparatus[apparatusId] = owned + 1;
+  return { cost, count: owned + 1 };
+}
+
+export function spendSkill(p: PlayerState, stat: SkillKey): void {
+  if (p.skillPoints <= 0) throw new GameError("No skill points to spend");
+  if (!(stat in p.skills)) throw new GameError("Unknown skill");
+  p.skillPoints -= 1;
+  p.skills[stat] += 1;
+  // Raising a resource cap also grants the point immediately.
+  if (stat === "energy" || stat === "stamina" || stat === "hp") p[stat] += 1;
+}
+
+export function vaultDeposit(p: PlayerState, amount: number): { deposited: number; fee: number } {
+  if (!Number.isFinite(amount) || amount <= 0) throw new GameError("Amount must be positive");
+  if (p.grist < amount) throw new GameError("Not enough Grist");
+  const fee = vaultFee(amount);
+  p.grist -= amount;
+  p.vaultGrist += amount - fee;
+  return { deposited: amount - fee, fee };
+}
+
+export function vaultWithdraw(p: PlayerState, amount: number): void {
+  if (!Number.isFinite(amount) || amount <= 0) throw new GameError("Amount must be positive");
+  if (p.vaultGrist < amount) throw new GameError("Not enough vaulted Grist");
+  p.vaultGrist -= amount;
+  p.grist += amount;
+}
+
+// ---------------------------------------------------------------------------
+// Raid
+// ---------------------------------------------------------------------------
 
 export interface RaidOutcome {
   win: boolean;
@@ -192,7 +303,7 @@ const RAID_STAMINA = 1;
 
 export function doRaid(attacker: PlayerState, defender: PlayerState, now: number): RaidOutcome {
   regenResources(attacker, now);
-  const wasFull = attacker.stamina >= resourceCap("stamina", attacker.level);
+  const wasFull = attacker.stamina >= cap(attacker, "stamina");
   if (attacker.stamina < RAID_STAMINA) throw new GameError("Not enough Stamina");
   attacker.stamina -= RAID_STAMINA;
   if (wasFull) attacker.staminaTs = now;
@@ -206,16 +317,17 @@ export function doRaid(attacker: PlayerState, defender: PlayerState, now: number
   const defTotals = broodTotals(defBrood, defLeader);
   const topTier = Math.max(atkTotals.topTier, defTotals.topTier) as Tier;
 
-  const r = resolveRaid(atkTotals.atk, defTotals.def, topTier, rngFactory());
+  const atk = atkTotals.atk + (attacker.skills?.attack ?? 0);
+  const def = defTotals.def + (defender.skills?.defense ?? 0);
+  const r = resolveRaid(atk, def, topTier, rngFactory());
 
   let stolen = 0;
   if (r.win) {
-    stolen = raidSteal(defender.grist); // friendly: only un-vaulted Grist
+    stolen = raidSteal(defender.grist);
     defender.grist -= stolen;
     attacker.grist += stolen;
     grantXp(attacker, 5);
   }
-  // Ghost rivals refill to baseline so they're always worth raiding.
   if (defender.isGhost && defender.ghostBaselineGrist != null) {
     defender.grist = defender.ghostBaselineGrist;
   }

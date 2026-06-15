@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
-import { ESSENCES, TIERS } from "@cc/engine";
+import { APPARATUS, ECONOMY, ESSENCES, TIERS } from "@cc/engine";
 import {
   allPlayers,
   createPlayer,
@@ -16,14 +16,22 @@ import {
 } from "./store.js";
 import {
   GameError,
+  buyApparatus,
   claimIdle,
   doQuest,
   doRaid,
   doTransmute,
+  gristIncomePerHour,
   pendingIdleGrist,
   regenResources,
   resourceView,
+  setBrood,
+  setLeader,
+  spendSkill,
+  vaultDeposit,
+  vaultWithdraw,
 } from "./game.js";
+import type { SkillKey } from "./store.js";
 
 const now = () => Date.now();
 
@@ -55,8 +63,10 @@ function publicState(p: PlayerState) {
     staminaNext: stamina.secondsToNext,
     hpNext: hp.secondsToNext,
     skillPoints: p.skillPoints,
+    skills: p.skills,
     apparatus: p.apparatus,
-    pendingIdleGrist: pendingIdleGrist(p, now()),
+    gristPerHour: gristIncomePerHour(p),
+    pendingIdleGrist: pendingIdleGrist(p, t),
     critters: p.critters,
     broodIds: p.broodIds,
     leaderId: p.leaderId,
@@ -81,7 +91,13 @@ export function buildServer(): FastifyInstance {
   app.get("/health", async () => ({ ok: true }));
 
   // Static catalog (config-as-data the client renders).
-  app.get("/catalog", async () => ({ tiers: TIERS, essences: ESSENCES }));
+  app.get("/catalog", async () => ({
+    tiers: TIERS,
+    essences: ESSENCES,
+    apparatus: APPARATUS,
+    apparatusCostGrowth: ECONOMY.apparatusCostGrowth,
+    vaultFeeFraction: ECONOMY.vaultFeeFraction,
+  }));
 
   app.post("/players", async (req, reply) => {
     const body = (req.body ?? {}) as { name?: string };
@@ -127,6 +143,81 @@ export function buildServer(): FastifyInstance {
       const outcome = doTransmute(p, body.a!, body.b!, body.catalyst ?? false);
       savePlayer(p);
       return { outcome, state: publicState(p) };
+    });
+  });
+
+  // Set the fielded brood (and optionally the leader).
+  app.post("/players/:id/brood", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { broodIds?: string[]; leaderId?: string };
+    if (!Array.isArray(body.broodIds)) return reply.code(400).send({ error: "broodIds required" });
+    return guard(reply, () => {
+      setBrood(p, body.broodIds!, body.leaderId);
+      savePlayer(p);
+      return publicState(p);
+    });
+  });
+
+  // Set the brood leader.
+  app.post("/players/:id/leader", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { leaderId?: string };
+    if (!body.leaderId) return reply.code(400).send({ error: "leaderId required" });
+    return guard(reply, () => {
+      setLeader(p, body.leaderId!);
+      savePlayer(p);
+      return publicState(p);
+    });
+  });
+
+  // Buy one of an apparatus (idle income building).
+  app.post("/players/:id/apparatus", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { apparatusId?: string };
+    if (!body.apparatusId) return reply.code(400).send({ error: "apparatusId required" });
+    return guard(reply, () => {
+      const result = buyApparatus(p, body.apparatusId!);
+      savePlayer(p);
+      return { result, state: publicState(p) };
+    });
+  });
+
+  // Spend one skill point on a stat.
+  app.post("/players/:id/skill", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { stat?: SkillKey };
+    if (!body.stat) return reply.code(400).send({ error: "stat required" });
+    return guard(reply, () => {
+      spendSkill(p, body.stat!);
+      savePlayer(p);
+      return publicState(p);
+    });
+  });
+
+  // Vault: deposit (5% fee) / withdraw (free) to protect Grist from raids.
+  app.post("/players/:id/vault/deposit", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { amount?: number };
+    return guard(reply, () => {
+      const result = vaultDeposit(p, Number(body.amount));
+      savePlayer(p);
+      return { result, state: publicState(p) };
+    });
+  });
+
+  app.post("/players/:id/vault/withdraw", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { amount?: number };
+    return guard(reply, () => {
+      vaultWithdraw(p, Number(body.amount));
+      savePlayer(p);
+      return publicState(p);
     });
   });
 

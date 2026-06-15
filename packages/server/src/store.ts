@@ -2,6 +2,13 @@ import { randomUUID } from "node:crypto";
 import type { Critter, EssenceId, Grade, Tier } from "@cc/engine";
 import { dbClear, dbDelete, dbLoadAll, dbUpsert } from "./db.js";
 
+export type SkillKey = "attack" | "defense" | "hp" | "energy" | "stamina";
+export type SkillAllocation = Record<SkillKey, number>;
+
+function zeroSkills(): SkillAllocation {
+  return { attack: 0, defense: 0, hp: 0, energy: 0, stamina: 0 };
+}
+
 export interface PlayerState {
   id: string;
   name: string;
@@ -23,6 +30,7 @@ export interface PlayerState {
   hpTs: number;
   // progression
   skillPoints: number;
+  skills: SkillAllocation;
   // economy
   apparatus: Record<string, number>;
   lastClaimTs: number;
@@ -39,8 +47,9 @@ export interface PlayerState {
 /** Write-through in-memory cache over the SQLite store. */
 const players = new Map<string, PlayerState>();
 
-// Hydrate cache from disk on startup.
+// Hydrate cache from disk on startup (normalising any pre-skills records).
 for (const p of dbLoadAll()) {
+  if (!p.skills) p.skills = zeroSkills();
   players.set(p.id, p);
 }
 
@@ -77,6 +86,7 @@ function freshState(id: string, name: string, now: number): PlayerState {
     hp: 100,
     hpTs: now,
     skillPoints: 0,
+    skills: zeroSkills(),
     apparatus: { hut: 1 },
     lastClaimTs: now,
     critters: starters,
