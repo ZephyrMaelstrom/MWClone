@@ -5,7 +5,7 @@ import { api, type TransmuteOutcome } from "../api";
 import { useGame } from "../state";
 import { theme } from "../theme";
 import { CritterCard } from "../components/CritterCard";
-import { CrucibleVessel } from "../components/CrucibleVessel";
+import { CrucibleArt } from "../components/CrucibleArt";
 
 export function CrucibleScreen() {
   const { player, setPlayer } = useGame();
@@ -55,7 +55,7 @@ export function CrucibleScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.vessel}>
-        <CrucibleVessel intensity={ready ? 1.6 : 1} />
+        <CrucibleArt slag={last ? !last.success : false} />
         <Text style={styles.hint}>
           {ready
             ? `Transmute two ${TIERS[lockTier!].name} → ${TIERS[resultTier!].name}`

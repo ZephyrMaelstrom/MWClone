@@ -6,13 +6,18 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#1c1410",
+    "icon": "./assets/ui/icon.png",
     "splash": {
+      "image": "./assets/ui/icon.png",
       "backgroundColor": "#1c1410",
       "resizeMode": "contain"
     },
     "ios": { "supportsTablet": true },
     "android": {
-      "adaptiveIcon": { "backgroundColor": "#1c1410" }
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/ui/icon.png",
+        "backgroundColor": "#1c1410"
+      }
     },
     "plugins": ["react-native-reanimated/plugin"],
     "extra": {
