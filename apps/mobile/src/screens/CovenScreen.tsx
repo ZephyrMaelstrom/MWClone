@@ -5,6 +5,7 @@ import { useGame } from "../state";
 import { notify } from "../dialog";
 import { theme } from "../theme";
 import { ChatBox } from "../components/ChatBox";
+import { AnimatedBar } from "../components/anim";
 
 type Board = "level" | "power" | "boss";
 
@@ -155,9 +156,7 @@ export function CovenScreen() {
           <View style={styles.panel}>
             {boss ? (
               <>
-                <View style={styles.barTrack}>
-                  <View style={[styles.barFill, { width: `${hpPct}%` }]} />
-                </View>
+                <AnimatedBar pct={hpPct} color={theme.colors.danger} height={16} />
                 <Text style={styles.fine}>{Math.max(0, boss.hp).toLocaleString()} / {boss.maxHp.toLocaleString()} HP</Text>
                 <Pressable onPress={attack} disabled={busy} style={[styles.button, busy && styles.dim]}>
                   <Text style={styles.buttonText}>Attack (−1 Stamina)</Text>

@@ -12,6 +12,7 @@ import { BossScreen } from "./src/screens/BossScreen";
 import { CovenScreen } from "./src/screens/CovenScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { AuthScreen } from "./src/screens/AuthScreen";
+import { FadeIn, Pop } from "./src/components/anim";
 
 type TabKey = "crucible" | "roster" | "quest" | "raid" | "boss" | "coven" | "profile";
 const TABS: { key: TabKey; label: string }[] = [
@@ -30,11 +31,15 @@ function HeaderBar() {
   return (
     <View style={styles.header}>
       <Text style={styles.headerName}>
-        {player.name} · Lv{player.level}
+        {player.username ?? player.name} · Lv{player.level}
       </Text>
       <View style={styles.currencies}>
-        <Text style={styles.coin}>◈ {player.grist.toLocaleString()}</Text>
-        <Text style={styles.elixir}>✦ {player.elixir}</Text>
+        <Pop key={`g${player.grist}`}>
+          <Text style={styles.coin}>◈ {player.grist.toLocaleString()}</Text>
+        </Pop>
+        <Pop key={`e${player.elixir}`}>
+          <Text style={styles.elixir}>✦ {player.elixir}</Text>
+        </Pop>
       </View>
     </View>
   );
@@ -66,7 +71,8 @@ function Shell() {
   return (
     <View style={styles.flex}>
       <HeaderBar />
-      <View style={styles.flex}>
+      {/* keyed so each tab switch replays a quick fade-in */}
+      <FadeIn key={tab} style={styles.flex}>
         {tab === "crucible" && <CrucibleScreen />}
         {tab === "roster" && <RosterScreen />}
         {tab === "quest" && <QuestScreen />}
@@ -74,7 +80,7 @@ function Shell() {
         {tab === "boss" && <BossScreen />}
         {tab === "coven" && <CovenScreen />}
         {tab === "profile" && <ProfileScreen />}
-      </View>
+      </FadeIn>
       <View style={styles.tabbar}>
         {TABS.map((t) => (
           <Pressable key={t.key} style={styles.tab} onPress={() => setTab(t.key)}>

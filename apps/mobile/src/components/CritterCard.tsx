@@ -1,8 +1,9 @@
 import React from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { TIERS, statsFor, type Critter } from "@cc/engine";
 import { critterArt } from "../assets";
 import { theme } from "../theme";
+import { Pop, TapScale } from "./anim";
 
 interface Props {
   critter: Critter;
@@ -23,33 +24,35 @@ export function CritterCard({ critter, selected, fielded, isLeader, onPress }: P
       ? theme.colors.brass
       : theme.colors.panelEdge;
   return (
-    <Pressable onPress={onPress} style={[styles.card, { borderColor }]}>
-      <View style={styles.artWrap}>
-        <Image source={critterArt(critter)} style={styles.art} resizeMode="cover" />
-        <View style={[styles.badge, { backgroundColor: accent }]}>
-          <Text style={styles.badgeText}>{critter.essence[0]?.toUpperCase()}</Text>
-        </View>
-        {isLeader ? (
-          <View style={styles.leader}>
-            <Text style={styles.leaderText}>★</Text>
+    <Pop style={styles.wrap}>
+      <TapScale onPress={onPress} style={[styles.card, { borderColor }]}>
+        <View style={styles.artWrap}>
+          <Image source={critterArt(critter)} style={styles.art} resizeMode="cover" />
+          <View style={[styles.badge, { backgroundColor: accent }]}>
+            <Text style={styles.badgeText}>{critter.essence[0]?.toUpperCase()}</Text>
           </View>
-        ) : null}
-      </View>
-      <Text style={styles.tier}>
-        {TIERS[critter.tier].name}
-        {GRADE_MARK[critter.grade]}
-      </Text>
-      <Text style={styles.stat}>ATK {stats.atk.toLocaleString()}</Text>
-      <Text style={styles.stat}>DEF {stats.def.toLocaleString()}</Text>
-    </Pressable>
+          {isLeader ? (
+            <View style={styles.leader}>
+              <Text style={styles.leaderText}>★</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={styles.tier}>
+          {TIERS[critter.tier].name}
+          {GRADE_MARK[critter.grade]}
+        </Text>
+        <Text style={styles.stat}>ATK {stats.atk.toLocaleString()}</Text>
+        <Text style={styles.stat}>DEF {stats.def.toLocaleString()}</Text>
+      </TapScale>
+    </Pop>
   );
 }
 
 const styles = StyleSheet.create({
+  wrap: { margin: theme.space(0.5) },
   card: {
     width: 104,
     padding: theme.space(1),
-    margin: theme.space(0.5),
     borderRadius: theme.radius,
     borderWidth: 2,
     backgroundColor: theme.colors.panel,

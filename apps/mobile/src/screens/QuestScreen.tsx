@@ -5,6 +5,7 @@ import { api, type Catalog } from "../api";
 import { useGame } from "../state";
 import { notify } from "../dialog";
 import { theme } from "../theme";
+import { FloatingReward, TapScale } from "../components/anim";
 
 function mmss(total: number): string {
   const s = Math.max(0, Math.floor(total));
@@ -17,6 +18,7 @@ export function QuestScreen() {
   const [busy, setBusy] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [reward, setReward] = useState({ text: "", seq: 0 });
 
   useEffect(() => {
     api.catalog().then(setCatalog).catch(() => {});
@@ -48,6 +50,7 @@ export function QuestScreen() {
     try {
       const { outcome, state } = await api.quest(player.id);
       setPlayer(state);
+      setReward({ text: `+${outcome.gristGained} Grist`, seq: reward.seq + 1 });
       addLog(
         outcome.captured
           ? `+${outcome.gristGained} Grist, +${outcome.xpGained} XP — captured a ${TIERS[outcome.captured.tier].name} ${outcome.captured.essence}!`
@@ -105,7 +108,8 @@ export function QuestScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.panel}>
+      <View style={[styles.panel, styles.relative]}>
+        <FloatingReward trigger={reward.seq} text={reward.text} />
         <Text style={styles.dim}>Energy</Text>
         <Text style={styles.big}>
           {player?.energy ?? 0}
@@ -114,9 +118,9 @@ export function QuestScreen() {
         <Text style={styles.dim}>{full ? "Full" : `+1 in ${mmss(countdown)}`} · 5 Energy per quest</Text>
       </View>
 
-      <Pressable onPress={runQuest} disabled={busy || !canQuest} style={[styles.button, (busy || !canQuest) && styles.dimBtn]}>
+      <TapScale onPress={runQuest} disabled={busy || !canQuest} style={[styles.button, (busy || !canQuest) && styles.dimBtn]}>
         <Text style={styles.buttonText}>{canQuest ? "Quest (−5 Energy)" : "Not enough Energy"}</Text>
-      </Pressable>
+      </TapScale>
 
       {/* Vault */}
       <Text style={styles.section}>Vault</Text>
@@ -184,6 +188,7 @@ const styles = StyleSheet.create({
     padding: theme.space(2),
     marginBottom: theme.space(1),
   },
+  relative: { position: "relative", overflow: "hidden" },
   big: { color: theme.colors.text, fontSize: 22, fontWeight: "800" },
   max: { color: theme.colors.textDim, fontSize: 16, fontWeight: "600" },
   val: { color: theme.colors.text, fontWeight: "700" },

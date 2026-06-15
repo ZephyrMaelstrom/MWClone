@@ -5,6 +5,7 @@ import { api, type DailyView, type EggType, type EventType, type Reward, type Sk
 import { useGame } from "../state";
 import { confirmDialog, notify } from "../dialog";
 import { theme } from "../theme";
+import { AnimatedBar } from "../components/anim";
 
 const SKILLS: { key: SkillKey; label: string; hint: string }[] = [
   { key: "stamina", label: "Stamina", hint: "more raids/bosses (recommended)" },
@@ -206,24 +207,15 @@ export function ProfileScreen() {
         <Row label="Level" value={String(player?.level ?? 0)} />
         {player && (
           <>
-            <View style={styles.xpTrack}>
-              <View
-                style={[
-                  styles.xpFill,
-                  {
-                    width: `${Math.max(
-                      0,
-                      Math.min(
-                        100,
-                        Math.round(
-                          ((player.xp - player.xpThisLevel) /
-                            Math.max(1, player.xpNextLevel - player.xpThisLevel)) *
-                            100,
-                        ),
-                      ),
-                    )}%`,
-                  },
-                ]}
+            <View style={{ marginTop: theme.space(1) }}>
+              <AnimatedBar
+                pct={Math.round(
+                  ((player.xp - player.xpThisLevel) /
+                    Math.max(1, player.xpNextLevel - player.xpThisLevel)) *
+                    100,
+                )}
+                color={theme.colors.ember}
+                height={10}
               />
             </View>
             <Text style={styles.hint}>

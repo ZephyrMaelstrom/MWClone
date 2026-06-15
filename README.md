@@ -51,6 +51,8 @@ codebase later (EAS Build).
 - [x] Accounts & login (username/password, token-guarded routes, guest-claim, XP bar)
 - [x] P2+: Exhibition (ranked ELO ladder, weekly seasons, Renown shop) + world/coven chat
 - [x] Per-tier critter art (3 refinement stages × 6 essences, backgrounds removed)
+- [x] Game animations (Reanimated): crucible transmute flash, card pop/tap, animated
+      bars, floating rewards, tab fades, currency pulse
 - [ ] Deploy to Render and share the link with the group
 - [ ] Android APK via EAS Build
 - [ ] Economy & combat numbers playtested

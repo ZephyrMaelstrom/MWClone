@@ -4,6 +4,7 @@ import { api, type ArenaOpponent, type ArenaStandings } from "../api";
 import { useGame } from "../state";
 import { notify } from "../dialog";
 import { theme } from "../theme";
+import { FloatingReward } from "../components/anim";
 
 interface Rival {
   id: string;
@@ -21,6 +22,7 @@ export function RaidScreen() {
   const [opps, setOpps] = useState<ArenaOpponent[]>([]);
   const [board, setBoard] = useState<ArenaStandings | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reward, setReward] = useState({ text: "", seq: 0, win: true });
 
   const loadRivals = useCallback(async () => {
     const list = await api.listPlayers();
@@ -50,6 +52,7 @@ export function RaidScreen() {
     try {
       const { outcome, state } = await api.raid(player.id, defenderId);
       setPlayer(state);
+      setReward({ text: outcome.win ? `+${outcome.gristStolen.toLocaleString()} Grist` : "Repelled", seq: reward.seq + 1, win: outcome.win });
       notify(
         outcome.win ? "Victory!" : "Repelled",
         outcome.win
@@ -69,6 +72,7 @@ export function RaidScreen() {
     try {
       const { result, state } = await api.arenaFight(player.id, opponentId);
       setPlayer(state);
+      setReward({ text: result.win ? `+${result.renown} Renown` : "Lost", seq: reward.seq + 1, win: result.win });
       await loadArena();
       notify(
         result.win ? "Exhibition won!" : "Exhibition lost",
@@ -106,7 +110,8 @@ export function RaidScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.panel}>
+      <View style={[styles.panel, styles.relative]}>
+        <FloatingReward trigger={reward.seq} text={reward.text} color={reward.win ? theme.colors.success : theme.colors.danger} />
         <Text style={styles.dim}>Stamina</Text>
         <Text style={styles.big}>
           {player?.stamina ?? 0}
@@ -184,6 +189,7 @@ const styles = StyleSheet.create({
     padding: theme.space(2),
     marginBottom: theme.space(2),
   },
+  relative: { position: "relative", overflow: "hidden" },
   big: { color: theme.colors.text, fontSize: 22, fontWeight: "800" },
   max: { color: theme.colors.textDim, fontSize: 16, fontWeight: "600" },
   dim: { color: theme.colors.textDim, marginTop: 4 },

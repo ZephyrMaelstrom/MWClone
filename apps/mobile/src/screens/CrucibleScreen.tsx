@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { TIERS, canTransmute, catalystCost, gristCost, successRate, type Critter, type Tier } from "@cc/engine";
 import { api, type TransmuteOutcome } from "../api";
 import { useGame } from "../state";
 import { theme } from "../theme";
+import { critterArt } from "../assets";
 import { CritterCard } from "../components/CritterCard";
 import { CrucibleArt } from "../components/CrucibleArt";
+import { Bob, Flash, FloatingReward, Pop, TapScale } from "../components/anim";
 import { notify } from "../dialog";
 
 export function CrucibleScreen() {
@@ -14,6 +16,7 @@ export function CrucibleScreen() {
   const [catalyst, setCatalyst] = useState(false);
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<TransmuteOutcome | null>(null);
+  const [seq, setSeq] = useState(0); // bumps on each result to replay animations
   const [mergeBonus, setMergeBonus] = useState(0);
   const [eventName, setEventName] = useState<string | null>(null);
 
@@ -63,6 +66,7 @@ export function CrucibleScreen() {
       const { outcome, state } = await api.transmute(player.id, picked[0]!, picked[1]!, catalyst);
       setPlayer(state);
       setLast(outcome);
+      setSeq((s) => s + 1);
       setPicked([]);
     } catch (e) {
       notify("The brew refused", (e as Error).message);
@@ -81,7 +85,15 @@ export function CrucibleScreen() {
         </View>
       )}
       <View style={styles.vessel}>
-        <CrucibleArt slag={last ? !last.success : false} />
+        <Flash trigger={seq} color={last?.success ? theme.colors.crucibleGlow : theme.colors.danger} />
+        <FloatingReward
+          trigger={seq}
+          text={last ? (last.success ? `✦ ${TIERS[last.outcomeCritter!.tier].name}!` : "✗ Slag") : ""}
+          color={last?.success ? theme.colors.success : theme.colors.danger}
+        />
+        <Bob>
+          <CrucibleArt slag={last ? !last.success : false} />
+        </Bob>
         <Text style={styles.hint}>
           {ready
             ? `Transmute two ${TIERS[lockTier!].name} → ${TIERS[resultTier!].name}`
@@ -102,20 +114,23 @@ export function CrucibleScreen() {
         </View>
       )}
 
-      <Pressable
+      <TapScale
         onPress={transmute}
         disabled={!ready || busy}
         style={[styles.button, (!ready || busy) && styles.buttonDisabled]}
       >
         <Text style={styles.buttonText}>{busy ? "Brewing…" : "Stoke the Crucible"}</Text>
-      </Pressable>
+      </TapScale>
 
       {last && (
-        <Text style={[styles.outcome, { color: last.success ? theme.colors.success : theme.colors.danger }]}>
-          {last.success
-            ? `✦ Transmuted into ${TIERS[last.outcomeCritter!.tier].name}!`
-            : `✗ The brew curdled into Slag (+${last.shardsGained} shard)`}
-        </Text>
+        <Pop key={seq} style={styles.resultCard}>
+          <Image source={critterArt((last.outcomeCritter ?? last.slagCritter)!)} style={styles.resultImg} resizeMode="contain" />
+          <Text style={[styles.outcome, { color: last.success ? theme.colors.success : theme.colors.danger }]}>
+            {last.success
+              ? `✦ Transmuted into ${TIERS[last.outcomeCritter!.tier].name}!`
+              : `✗ The brew curdled into Slag (+${last.shardsGained} shard)`}
+          </Text>
+        </Pop>
       )}
 
       <Text style={styles.section}>Your Critters</Text>
@@ -153,7 +168,17 @@ const styles = StyleSheet.create({
     marginBottom: theme.space(1),
   },
   eventText: { color: "#1c1410", fontWeight: "800" },
-  vessel: { alignItems: "center", marginBottom: theme.space(1) },
+  vessel: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: theme.space(1),
+    paddingVertical: theme.space(1),
+    position: "relative",
+    overflow: "hidden",
+    borderRadius: theme.radius,
+  },
+  resultCard: { alignItems: "center", marginVertical: theme.space(1) },
+  resultImg: { width: 96, height: 96 },
   hint: { color: theme.colors.textDim, marginTop: theme.space(1), textAlign: "center" },
   panel: {
     backgroundColor: theme.colors.panel,

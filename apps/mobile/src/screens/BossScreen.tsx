@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { api, type BossView, type Reward } from "../api";
 import { useGame } from "../state";
 import { notify } from "../dialog";
 import { theme } from "../theme";
+import { AnimatedBar, FloatingReward, TapScale } from "../components/anim";
 
 const MODES: { mode: number; label: string; ap: number }[] = [
   { mode: 1, label: "1× hit", ap: 1 },
@@ -25,6 +26,7 @@ export function BossScreen() {
   const { player, setPlayer } = useGame();
   const [boss, setBoss] = useState<BossView | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hit, setHit] = useState({ dmg: 0, seq: 0 });
 
   const loadBoss = useCallback(async () => {
     try {
@@ -46,6 +48,7 @@ export function BossScreen() {
     try {
       const { result, state } = await api.attackBoss(player.id, mode);
       setPlayer(state);
+      setHit({ dmg: result.damage, seq: hit.seq + 1 });
       await loadBoss();
       if (result.defeated) {
         notify("The Aberration falls!", `Rewards: ${rewardText(result.reward)}. A tougher one rises…`);
@@ -61,12 +64,11 @@ export function BossScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.panel}>
+      <View style={[styles.panel, styles.bossPanel]}>
+        <FloatingReward trigger={hit.seq} text={`-${hit.dmg.toLocaleString()}`} color={theme.colors.ember} />
         <Text style={styles.title}>{boss?.name ?? "The Aberration"}</Text>
         <Text style={styles.level}>Level {boss?.level ?? "—"} · shared world boss</Text>
-        <View style={styles.barTrack}>
-          <View style={[styles.barFill, { width: `${hpPct}%` }]} />
-        </View>
+        <AnimatedBar pct={hpPct} color={theme.colors.danger} height={16} />
         <Text style={styles.hp}>
           {boss ? `${Math.max(0, boss.hp).toLocaleString()} / ${boss.maxHp.toLocaleString()} HP` : "…"}
         </Text>
@@ -81,7 +83,7 @@ export function BossScreen() {
           {MODES.map((m) => {
             const can = (player?.bossAp ?? 0) >= m.ap;
             return (
-              <Pressable
+              <TapScale
                 key={m.mode}
                 onPress={() => attack(m.mode)}
                 disabled={busy || !can}
@@ -89,7 +91,7 @@ export function BossScreen() {
               >
                 <Text style={styles.modeLabel}>{m.label}</Text>
                 <Text style={styles.modeAp}>{m.ap} AP</Text>
-              </Pressable>
+              </TapScale>
             );
           })}
         </View>
@@ -119,6 +121,7 @@ const styles = StyleSheet.create({
     padding: theme.space(2),
     marginBottom: theme.space(2),
   },
+  bossPanel: { position: "relative", overflow: "hidden" },
   title: { color: theme.colors.ember, fontWeight: "800", fontSize: 20 },
   level: { color: theme.colors.textDim, marginBottom: theme.space(1) },
   barTrack: { height: 16, backgroundColor: theme.colors.bg, borderRadius: 8, overflow: "hidden", marginTop: theme.space(1) },
