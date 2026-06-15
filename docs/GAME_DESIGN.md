@@ -45,7 +45,7 @@ fun is not twitch combat — it's **the gamble of merging**, **watching numbers 
 | Skill points | ✅ | Keep, but auto-suggest the "don't dump ATK/DEF" meta |
 | Alliances + Guilds | ✅ | **Merge into one "Pack" system** for simplicity |
 | Dual currency + gacha + VIP | ✅ | Keep, behind monetization flag |
-| Player trading | ❌ none in MW | **[DIVERGENCE]** consider limited gifting (open Q, §17) |
+| Player trading | ❌ none in MW | **[DECIDED]** no gifting/trading — MW-faithful |
 
 ---
 
@@ -83,7 +83,7 @@ bright bell on successful transmutation, a wet *crack* on failure.
 | Ranked PvP | **The Exhibition** | arena |
 | PvP attack | **raid a rival lab** | open-world PvP |
 
-### 3.2 The nine tiers — the transmutation ladder (base metals → Magnum Opus)
+### 3.2 The eleven tiers — the transmutation ladder (base metals → Magnum Opus)
 
 | # | Tier | Feel |
 |---|---|---|
@@ -91,13 +91,16 @@ bright bell on successful transmutation, a wet *crack* on failure.
 | 2 | Lead | dull, heavy |
 | 3 | Tin | |
 | 4 | Iron | |
-| 5 | Copper | |
-| 6 | Silver | critters begin to gleam, more ornate |
-| 7 | Gold | radiant, majestic |
-| 8 | Quintessence | crystalline, otherworldly |
-| 9 | **Magnum Opus** | peak; pure radiant transmuted being; **Evolution-only** |
+| 5 | Copper | first sheen |
+| 6 | Quicksilver | liquid, shifting |
+| 7 | Silver | critters gleam, more ornate |
+| 8 | Gold | radiant, majestic |
+| 9 | Platinum | refined, regal |
+| 10 | Quintessence | crystalline, otherworldly |
+| 11 | **Magnum Opus** | peak; pure radiant transmuted being; **Evolution-only** |
 
 Critters physically **refine** in appearance as they climb (grubby → ornate → luminous).
+Full power/cost/success numbers live in [`TUNING.md`](TUNING.md).
 
 ### 3.3 The six essences (elements)
 
@@ -120,24 +123,26 @@ Critters physically **refine** in appearance as they climb (grubby → ornate �
 
 ## 4. Monsters — entities, tiers, stats
 
-### 4.1 Tiers (compressed 22 → 9) **[DIVERGENCE]**
-A small group should reach endgame in **weeks, not years**, so we collapse the ladder:
+### 4.1 Tiers (compressed 22 → 11) **[DIVERGENCE]**
+A small group should reach endgame in **weeks, not years**, so we collapse the ladder.
+Power grows **~2.6×/tier** (geometric). Authoritative numbers in [`TUNING.md`](TUNING.md):
 
 | # | Tier | Role | ~Total power (AT+DF) |
 |---|---|---|---|
-| 1 | Dross | starter, **uncombinable** | ~25 |
-| 2 | Lead | merge entry | ~70 |
-| 3 | Tin | | ~200 |
-| 4 | Iron | | ~550 |
-| 5 | Copper | | ~1,500 |
-| 6 | Silver | | ~4,200 |
-| 7 | Gold | | ~12,000 |
-| 8 | Quintessence | | ~34,000 |
-| 9 | **Magnum Opus** | peak, **Evolution-only** | ~95,000 |
+| 1 | Dross | starter, **uncombinable** | 25 |
+| 2 | Lead | transmute entry | 65 |
+| 3 | Tin | | 170 |
+| 4 | Iron | | 450 |
+| 5 | Copper | | 1,150 |
+| 6 | Quicksilver | | 3,000 |
+| 7 | Silver | | 7,800 |
+| 8 | Gold | | 20,000 |
+| 9 | Platinum | | 52,000 |
+| 10 | Quintessence | | 135,000 |
+| 11 | **Magnum Opus** | peak, **Evolution-only** | 350,000 |
 
-Power grows ~**2.8×/tier** (geometric, like MW but shorter). Each tier ships with **6–8
-hand-designed monsters** (one+ per element) → ~60 monsters total for the prototype vs MW's
-542. **[DIVERGENCE: curation over volume.]**
+Each tier ships with **6–8 hand-designed critters** (one+ per essence) → ~**80 critters**
+total for the prototype vs MW's 542. **[DIVERGENCE: curation over volume.]**
 
 ### 4.2 Grade variants (kept)
 Stack on top of tier, like MW: **Normal → Plus (+) (+25%) → Omega (Ω) (+60%, merge-only,
@@ -185,7 +190,8 @@ Keep MW's funnel, trimmed:
 5. **Boss / Arena drops.**
 6. **Event monsters** (limited, uncombinable "Unique" class).
 
-**No open trading** (MW parity); limited gifting is an open question (§17).
+**No trading or gifting** (MW-faithful) **[DECIDED]** — keeps the economy clean and removes
+alt-account/exploit surface for a small group.
 
 ---
 
@@ -207,13 +213,14 @@ Keep MW's funnel, trimmed:
   ```
   *(Derived from MW's grid; final values are tunable — symmetry: A+B == B+A.)*
 
-### 6.2 Success rates **[DIVERGENCE — tuned for 9 tiers]**
+### 6.2 Success rates **[DIVERGENCE — tuned for 11 tiers]** (full table in `TUNING.md`)
 | Result tier | Base success |
 |---|---|
-| Uncommon–Epic (2–4) | 75% |
-| Legend–Ancient (5–7) | 55% |
-| Godlike (8) | 40% |
-| Ascendant (9) | **Evolution only — can't fail** (consumes a 2nd Godlike + materials) |
+| Lead–Iron (2–4) | 75% |
+| Copper–Silver (5–7) | 60% |
+| Gold–Platinum (8–9) | 45% |
+| Quintessence (10) | 35% |
+| Magnum Opus (11) | **Evolution only — can't fail** (consumes a 2nd Quintessence + materials) |
 
 - **Special/"sure" merge = 100%**, paid in premium currency (monetization hook).
 - **Boosts:** VIP +1–6%, gear/relic +3%, **Merge Events** +15–25% (the main spend/excitement
@@ -252,8 +259,9 @@ variance band widens to ±25% at tiers 8–9 (matches MW "top tiers more random"
 - **PvE Quests** (Energy): the leveling/capture engine. New quest area every few player
   levels; areas re-clearable for escalating rewards.
 - **PvP — Open Raids** (Stamina): attack other players' **stored defense snapshots**
-  **[DIVERGENCE: snapshot not live]**. Win → steal a slice of their *carried* gold (scales
-  with target level) + XP. **Bounty** on KO; **Revenge** marking for you + Pack.
+  **[DIVERGENCE: snapshot not live]**. **Friendly tuning [DECIDED]:** win → steal **~10% of
+  the target's UN-vaulted Grist** + XP; **critters are NEVER lost or captured.** Vault fee a
+  gentle ~5%. **Bounty** on KO; **Revenge** marking for you + Coven.
   - **Ghost opponents** **[DIVERGENCE]**: when the live pool is thin, fill the attack list
     with scaled bots so PvP always has targets.
 - **Arena** (ranked, AP): **6v6**, registered team, **24h seasons** (shorter than MW's 48h
@@ -428,17 +436,19 @@ LedgerEntry { playerId, currency, delta, reason, ts }   // audit every economy c
 **Post-MVP:** Arena seasons, Pack Boss, Pack-vs-Pack, Omega/Star grades, events engine, VIP/
 season pass, cosmetics, real IAP.
 
-## 17. Open design questions (to decide together)
-1. **Branding:** game name + element names + tier names + currency name + social-unit name +
-   art direction (§3). *Biggest open item.*
-2. **Client:** React Native (recommended) vs Flutter (§14)?
-3. **Limited gifting** between packmates — yes/no? (MW had none; could boost small-group
-   stickiness, but adds exploit surface.)
-4. **PvP tone:** how punishing should gold-theft be among friends? (tune steal %, bank fee.)
-5. **Tier count:** is 9 the right ladder length, or 7 (faster) / 11 (longer chase)?
-6. **Monetization timing:** free for the group indefinitely, or plan a soft launch?
-7. **Theme of the "merge" act** — biological breeding? alchemical fusion? cosmic
-   summoning? (shapes art + flavor + UI metaphor).
+## 17. Design decisions
+**Resolved**
+1. ✅ **Branding:** *Crucible Critters* — alchemical lab theme (§3). The "merge act" =
+   **Transmutation in the Crucible**.
+2. ✅ **Tier count:** **11** tiers (Dross → Magnum Opus), ~2.6×/tier (§3.2, §4.1, `TUNING.md`).
+3. ✅ **PvP tone:** **Friendly** — ~10% un-vaulted Grist theft, ~5% vault fee, **no critter
+   loss** (§7.2).
+4. ✅ **Gifting/trading:** **None** (MW-faithful) (§2, §5).
+
+**Still open**
+5. **Client:** React Native (recommended) vs Flutter (§14)? *Next decision before prototype.*
+6. **Monetization timing:** free for the group indefinitely, or plan a soft launch later?
+   (Systems are built behind `MONETIZATION_ENABLED` either way — §11.)
 
 ## 18. Glossary
 - **Tier** — a monster's power rank; merging climbs it.
