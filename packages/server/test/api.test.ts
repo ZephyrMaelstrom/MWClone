@@ -186,6 +186,68 @@ describe("P0: brood, apparatus, skills, vault", () => {
   });
 });
 
+describe("P1: daily loop, eggs, boss endpoint", () => {
+  it("lists daily missions and claims one after completing it", async () => {
+    setRngFactory(() => constantRng(0.99)); // no captures, deterministic
+    const p = await createPlayer();
+    await app.inject({ method: "POST", url: `/players/${p.id}/quest` });
+    await app.inject({ method: "POST", url: `/players/${p.id}/quest` });
+    await app.inject({ method: "POST", url: `/players/${p.id}/quest` });
+    const daily = (await app.inject({ method: "GET", url: `/players/${p.id}/daily` })).json();
+    const quests = daily.missions.find((m: { id: string }) => m.id === "quests3");
+    expect(quests.done).toBe(true);
+    const res = await app.inject({
+      method: "POST",
+      url: `/players/${p.id}/daily/claim`,
+      payload: { missionId: "quests3" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().state.elixir).toBeGreaterThan(10); // got Elixir reward
+  });
+
+  it("attendance claims once per day", async () => {
+    const p = await createPlayer();
+    const first = await app.inject({ method: "POST", url: `/players/${p.id}/attendance/claim` });
+    expect(first.statusCode).toBe(200);
+    expect(first.json().result.day).toBe(1);
+    const second = await app.inject({ method: "POST", url: `/players/${p.id}/attendance/claim` });
+    expect(second.statusCode).toBe(409);
+  });
+
+  it("roulette spins once per day", async () => {
+    const p = await createPlayer();
+    expect((await app.inject({ method: "POST", url: `/players/${p.id}/roulette/spin` })).statusCode).toBe(200);
+    expect((await app.inject({ method: "POST", url: `/players/${p.id}/roulette/spin` })).statusCode).toBe(409);
+  });
+
+  it("buys a gacha egg for Elixir and gains a critter", async () => {
+    setRngFactory(() => constantRng(0.5));
+    const p = await createPlayer();
+    const res = await app.inject({
+      method: "POST",
+      url: `/players/${p.id}/egg`,
+      payload: { type: "crucible" },
+    });
+    expect(res.statusCode).toBe(200);
+    const { state } = res.json();
+    expect(state.elixir).toBe(5); // 10 - 5
+    expect(state.critters.length).toBe(7); // 6 starters + 1
+  });
+
+  it("serves the world boss and accepts an attack", async () => {
+    const p = await createPlayer();
+    const boss = (await app.inject({ method: "GET", url: "/boss" })).json();
+    expect(boss.name).toBe("The Aberration");
+    const res = await app.inject({
+      method: "POST",
+      url: `/players/${p.id}/boss/attack`,
+      payload: { mode: 1 },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().result.damage).toBeGreaterThan(0);
+  });
+});
+
 describe("reset & delete", () => {
   it("reset restores a fresh starter profile, keeping the same id", async () => {
     setRngFactory(() => constantRng(0.99)); // no capture

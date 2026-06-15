@@ -30,6 +30,10 @@ function openDb(): Database {
       data    TEXT NOT NULL,
       updated INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS meta (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
   return db;
 }
@@ -59,4 +63,21 @@ export function dbDelete(id: string): void {
 
 export function dbClear(): void {
   clearStmt.run();
+  metaClearStmt.run();
+}
+
+const metaGetStmt = db.prepare(`SELECT value FROM meta WHERE key = ?`);
+const metaSetStmt = db.prepare(
+  `INSERT INTO meta (key, value) VALUES (?, ?)
+   ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+);
+const metaClearStmt = db.prepare(`DELETE FROM meta`);
+
+export function dbGetMeta<T>(key: string): T | null {
+  const row = metaGetStmt.get(key) as { value: string } | undefined;
+  return row ? (JSON.parse(row.value) as T) : null;
+}
+
+export function dbSetMeta(key: string, value: unknown): void {
+  metaSetStmt.run(key, JSON.stringify(value));
 }

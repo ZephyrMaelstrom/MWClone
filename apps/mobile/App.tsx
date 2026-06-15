@@ -8,14 +8,16 @@ import { CrucibleScreen } from "./src/screens/CrucibleScreen";
 import { RosterScreen } from "./src/screens/RosterScreen";
 import { QuestScreen } from "./src/screens/QuestScreen";
 import { RaidScreen } from "./src/screens/RaidScreen";
+import { BossScreen } from "./src/screens/BossScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 
-type TabKey = "crucible" | "roster" | "quest" | "raid" | "profile";
+type TabKey = "crucible" | "roster" | "quest" | "raid" | "boss" | "profile";
 const TABS: { key: TabKey; label: string }[] = [
   { key: "crucible", label: "Crucible" },
   { key: "roster", label: "Roster" },
   { key: "quest", label: "Quest" },
   { key: "raid", label: "Raid" },
+  { key: "boss", label: "Boss" },
   { key: "profile", label: "Lab" },
 ];
 
@@ -65,6 +67,7 @@ function Shell() {
         {tab === "roster" && <RosterScreen />}
         {tab === "quest" && <QuestScreen />}
         {tab === "raid" && <RaidScreen />}
+        {tab === "boss" && <BossScreen />}
         {tab === "profile" && <ProfileScreen />}
       </View>
       <View style={styles.tabbar}>

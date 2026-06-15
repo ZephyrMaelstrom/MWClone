@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { api, type SkillKey } from "../api";
+import { api, type DailyView, type EggType, type Reward, type SkillKey } from "../api";
 import { useGame } from "../state";
 import { confirmDialog, notify } from "../dialog";
 import { theme } from "../theme";
@@ -13,9 +13,39 @@ const SKILLS: { key: SkillKey; label: string; hint: string }[] = [
   { key: "defense", label: "Defense", hint: "flat DEF (critters give more)" },
 ];
 
+const EGGS: { type: EggType; label: string; cost: number }[] = [
+  { type: "crucible", label: "Crucible Egg", cost: 5 },
+  { type: "refined", label: "Refined Egg", cost: 50 },
+  { type: "opus", label: "Opus Egg (Gold+)", cost: 300 },
+];
+
+function rewardText(r?: Reward): string {
+  if (!r) return "";
+  const parts: string[] = [];
+  if (r.grist) parts.push(`${r.grist.toLocaleString()} Grist`);
+  if (r.elixir) parts.push(`${r.elixir} Elixir`);
+  if (r.reagents) parts.push(`${r.reagents} Reagent`);
+  if (r.critterTier) parts.push(`a tier-${r.critterTier} critter`);
+  return parts.join(", ");
+}
+
 export function ProfileScreen() {
   const { player, setPlayer, resetProgress, newProfile } = useGame();
   const [busy, setBusy] = useState(false);
+  const [daily, setDaily] = useState<DailyView | null>(null);
+
+  const loadDaily = useCallback(async () => {
+    if (!player) return;
+    try {
+      setDaily(await api.daily(player.id));
+    } catch {
+      /* ignore */
+    }
+  }, [player?.id]);
+
+  useEffect(() => {
+    loadDaily();
+  }, [loadDaily]);
 
   const spend = async (stat: SkillKey) => {
     if (!player || player.skillPoints <= 0 || busy) return;
@@ -24,6 +54,65 @@ export function ProfileScreen() {
       setPlayer(await api.spendSkill(player.id, stat));
     } catch (e) {
       notify("Cannot spend", (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const claimMission = async (missionId: string) => {
+    if (!player || busy) return;
+    setBusy(true);
+    try {
+      const { reward, state } = await api.claimMission(player.id, missionId);
+      setPlayer(state);
+      await loadDaily();
+      notify("Claimed", rewardText(reward));
+    } catch (e) {
+      notify("Cannot claim", (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const claimAttendance = async () => {
+    if (!player || busy) return;
+    setBusy(true);
+    try {
+      const { result, state } = await api.attendanceClaim(player.id);
+      setPlayer(state);
+      await loadDaily();
+      notify(`Day ${result.day}`, rewardText(result.reward));
+    } catch (e) {
+      notify("Cannot claim", (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const spin = async () => {
+    if (!player || busy) return;
+    setBusy(true);
+    try {
+      const { result, state } = await api.rouletteSpin(player.id);
+      setPlayer(state);
+      await loadDaily();
+      notify("Roulette", `You won ${rewardText(result.reward)}!`);
+    } catch (e) {
+      notify("Cannot spin", (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const buyEgg = async (type: EggType) => {
+    if (!player || busy) return;
+    setBusy(true);
+    try {
+      const { outcome, state } = await api.buyEgg(player.id, type);
+      setPlayer(state);
+      notify("Egg hatched!", `A tier-${outcome.critter.tier} ${outcome.critter.essence}${outcome.pity ? " (pity!)" : ""}`);
+    } catch (e) {
+      notify("Cannot buy", (e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -99,6 +188,51 @@ export function ProfileScreen() {
         ))}
       </View>
 
+      <Text style={styles.heading}>Daily</Text>
+      <View style={styles.panel}>
+        <View style={styles.rowBtns}>
+          <Pressable onPress={claimAttendance} disabled={busy || !player?.attendanceAvailable} style={[styles.smallBtn, (busy || !player?.attendanceAvailable) && styles.dim2]}>
+            <Text style={styles.smallText}>{player?.attendanceAvailable ? "Claim attendance" : "Attendance ✓"}</Text>
+          </Pressable>
+          <Pressable onPress={spin} disabled={busy || !player?.rouletteAvailable} style={[styles.smallBtn, (busy || !player?.rouletteAvailable) && styles.dim2]}>
+            <Text style={styles.smallText}>{player?.rouletteAvailable ? "Free roulette" : "Roulette ✓"}</Text>
+          </Pressable>
+        </View>
+        {daily?.missions.map((m) => (
+          <View key={m.id} style={styles.skillRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.skillLabel}>{m.label}</Text>
+              <Text style={styles.hint}>
+                {m.progress}/{m.target} · {rewardText(m.reward)}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => claimMission(m.id)}
+              disabled={busy || !m.done || m.claimed}
+              style={[styles.claimMini, (busy || !m.done || m.claimed) && styles.dim2]}
+            >
+              <Text style={styles.claimMiniText}>{m.claimed ? "✓" : "Claim"}</Text>
+            </Pressable>
+          </View>
+        ))}
+      </View>
+
+      <Text style={styles.heading}>Eggs · {player?.elixir ?? 0} Elixir</Text>
+      <View style={styles.panel}>
+        {EGGS.map((e) => (
+          <View key={e.type} style={styles.skillRow}>
+            <Text style={styles.skillLabel}>{e.label}</Text>
+            <Pressable
+              onPress={() => buyEgg(e.type)}
+              disabled={busy || (player?.elixir ?? 0) < e.cost}
+              style={[styles.claimMini, (busy || (player?.elixir ?? 0) < e.cost) && styles.dim2]}
+            >
+              <Text style={styles.claimMiniText}>{e.cost} ✦</Text>
+            </Pressable>
+          </View>
+        ))}
+      </View>
+
       <Pressable onPress={confirmReset} disabled={busy} style={[styles.button, styles.warn]}>
         <Text style={styles.buttonText}>Reset Progress</Text>
       </Pressable>
@@ -154,6 +288,22 @@ const styles = StyleSheet.create({
   },
   plusText: { color: "#1c1410", fontWeight: "800", fontSize: 20 },
   dim2: { opacity: 0.35 },
+  rowBtns: { flexDirection: "row", gap: theme.space(1), marginBottom: theme.space(1) },
+  smallBtn: {
+    flex: 1,
+    backgroundColor: theme.colors.brass,
+    borderRadius: theme.radius,
+    paddingVertical: theme.space(1),
+    alignItems: "center",
+  },
+  smallText: { color: "#1c1410", fontWeight: "700", fontSize: 12 },
+  claimMini: {
+    backgroundColor: theme.colors.ember,
+    borderRadius: theme.radius,
+    paddingVertical: theme.space(1),
+    paddingHorizontal: theme.space(2),
+  },
+  claimMiniText: { color: "#1c1410", fontWeight: "800", fontSize: 12 },
   button: {
     borderRadius: theme.radius,
     paddingVertical: theme.space(2),

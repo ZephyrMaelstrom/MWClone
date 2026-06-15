@@ -17,6 +17,7 @@ import {
 import {
   GameError,
   buyApparatus,
+  buyEgg,
   claimIdle,
   doQuest,
   doRaid,
@@ -30,7 +31,17 @@ import {
   spendSkill,
   vaultDeposit,
   vaultWithdraw,
+  type EggType,
 } from "./game.js";
+import {
+  attendanceAvailable,
+  attendanceClaim,
+  claimMission,
+  missionViews,
+  rouletteAvailable,
+  rouletteSpin,
+} from "./daily.js";
+import { attackBoss, bossView } from "./worldboss.js";
 import type { SkillKey } from "./store.js";
 
 const now = () => Date.now();
@@ -42,6 +53,7 @@ function publicState(p: PlayerState) {
   const energy = resourceView(p, "energy", t);
   const stamina = resourceView(p, "stamina", t);
   const hp = resourceView(p, "hp", t);
+  const bossAp = resourceView(p, "bossAp", t);
   return {
     id: p.id,
     name: p.name,
@@ -59,11 +71,17 @@ function publicState(p: PlayerState) {
     energyMax: energy.max,
     staminaMax: stamina.max,
     hpMax: hp.max,
+    bossAp: p.bossAp,
+    bossApMax: bossAp.max,
     energyNext: energy.secondsToNext,
     staminaNext: stamina.secondsToNext,
     hpNext: hp.secondsToNext,
+    bossApNext: bossAp.secondsToNext,
     skillPoints: p.skillPoints,
     skills: p.skills,
+    pity: p.pity,
+    attendanceAvailable: attendanceAvailable(p, t),
+    rouletteAvailable: rouletteAvailable(p, t),
     apparatus: p.apparatus,
     gristPerHour: gristIncomePerHour(p),
     pendingIdleGrist: pendingIdleGrist(p, t),
@@ -84,6 +102,17 @@ function webDir(): string | null {
 
 export function buildServer(): FastifyInstance {
   const app = Fastify({ logger: false });
+
+  // Tolerate empty bodies on POSTs that declare application/json (no-body actions).
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body, done) => {
+    const text = (body as string).trim();
+    if (text === "") return done(null, {});
+    try {
+      done(null, JSON.parse(text));
+    } catch (err) {
+      done(err as Error);
+    }
+  });
 
   // Allow the web client to call the API (same-origin in prod; permissive otherwise).
   app.register(cors, { origin: true });
@@ -218,6 +247,78 @@ export function buildServer(): FastifyInstance {
       vaultWithdraw(p, Number(body.amount));
       savePlayer(p);
       return publicState(p);
+    });
+  });
+
+  // World Boss — "The Aberration" (shared co-op).
+  app.get("/boss", async () => bossView(now()));
+
+  app.post("/players/:id/boss/attack", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { mode?: number };
+    return guard(reply, () => {
+      const result = attackBoss(p, Number(body.mode ?? 1), now());
+      savePlayer(p);
+      return { result, state: publicState(p) };
+    });
+  });
+
+  // Daily loop: missions, attendance, roulette.
+  app.get("/players/:id/daily", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const t = now();
+    return {
+      missions: missionViews(p, t),
+      attendanceAvailable: attendanceAvailable(p, t),
+      rouletteAvailable: rouletteAvailable(p, t),
+      attendanceDay: p.attendance.day,
+    };
+  });
+
+  app.post("/players/:id/daily/claim", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { missionId?: string };
+    if (!body.missionId) return reply.code(400).send({ error: "missionId required" });
+    return guard(reply, () => {
+      const reward = claimMission(p, body.missionId!, now());
+      savePlayer(p);
+      return { reward, state: publicState(p) };
+    });
+  });
+
+  app.post("/players/:id/attendance/claim", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    return guard(reply, () => {
+      const result = attendanceClaim(p, now());
+      savePlayer(p);
+      return { result, state: publicState(p) };
+    });
+  });
+
+  app.post("/players/:id/roulette/spin", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    return guard(reply, () => {
+      const result = rouletteSpin(p, now());
+      savePlayer(p);
+      return { result, state: publicState(p) };
+    });
+  });
+
+  // Gacha eggs.
+  app.post("/players/:id/egg", async (req, reply) => {
+    const p = getPlayer((req.params as { id: string }).id);
+    if (!p) return reply.code(404).send({ error: "Player not found" });
+    const body = (req.body ?? {}) as { type?: EggType };
+    if (!body.type) return reply.code(400).send({ error: "type required" });
+    return guard(reply, () => {
+      const outcome = buyEgg(p, body.type!);
+      savePlayer(p);
+      return { outcome, state: publicState(p) };
     });
   });
 

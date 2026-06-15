@@ -9,6 +9,28 @@ function zeroSkills(): SkillAllocation {
   return { attack: 0, defense: 0, hp: 0, energy: 0, stamina: 0 };
 }
 
+export interface DailyState {
+  date: string; // UTC day this set of counters belongs to
+  quests: number;
+  raidWins: number;
+  transmutes: number;
+  bossHits: number;
+  claimed: string[]; // mission ids already claimed today
+}
+
+export interface AttendanceState {
+  lastClaim: string; // UTC day of last claim
+  day: number; // 1..25 calendar position
+}
+
+export interface RouletteState {
+  lastSpin: string; // UTC day of last free spin
+}
+
+export function freshDaily(): DailyState {
+  return { date: "", quests: 0, raidWins: 0, transmutes: 0, bossHits: 0, claimed: [] };
+}
+
 export interface PlayerState {
   id: string;
   name: string;
@@ -28,9 +50,15 @@ export interface PlayerState {
   staminaTs: number;
   hp: number;
   hpTs: number;
+  bossAp: number;
+  bossApTs: number;
   // progression
   skillPoints: number;
   skills: SkillAllocation;
+  pity: number; // paid egg pulls since a high-tier result
+  daily: DailyState;
+  attendance: AttendanceState;
+  roulette: RouletteState;
   // economy
   apparatus: Record<string, number>;
   lastClaimTs: number;
@@ -47,10 +75,23 @@ export interface PlayerState {
 /** Write-through in-memory cache over the SQLite store. */
 const players = new Map<string, PlayerState>();
 
-// Hydrate cache from disk on startup (normalising any pre-skills records).
+// Hydrate cache from disk on startup (normalising older records).
 for (const p of dbLoadAll()) {
-  if (!p.skills) p.skills = zeroSkills();
+  normalize(p);
   players.set(p.id, p);
+}
+
+/** Backfill fields added after a profile was first created. */
+export function normalize(p: PlayerState): void {
+  if (!p.skills) p.skills = zeroSkills();
+  if (p.bossAp == null) {
+    p.bossAp = 10;
+    p.bossApTs = Date.now();
+  }
+  if (p.pity == null) p.pity = 0;
+  if (!p.daily) p.daily = freshDaily();
+  if (!p.attendance) p.attendance = { lastClaim: "", day: 0 };
+  if (!p.roulette) p.roulette = { lastSpin: "" };
 }
 
 export function newCritter(tier: Tier, essence: EssenceId, grade: Grade = "normal"): Critter {
@@ -85,8 +126,14 @@ function freshState(id: string, name: string, now: number): PlayerState {
     staminaTs: now,
     hp: 100,
     hpTs: now,
+    bossAp: 10,
+    bossApTs: now,
     skillPoints: 0,
     skills: zeroSkills(),
+    pity: 0,
+    daily: freshDaily(),
+    attendance: { lastClaim: "", day: 0 },
+    roulette: { lastSpin: "" },
     apparatus: { hut: 1 },
     lastClaimTs: now,
     critters: starters,

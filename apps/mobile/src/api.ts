@@ -29,9 +29,15 @@ export interface PlayerState {
   energyMax: number;
   staminaMax: number;
   hpMax: number;
+  bossAp: number;
+  bossApMax: number;
   energyNext: number; // seconds to next +1 energy
   staminaNext: number;
   hpNext: number;
+  bossApNext: number;
+  pity: number;
+  attendanceAvailable: boolean;
+  rouletteAvailable: boolean;
   skillPoints: number;
   skills: { attack: number; defense: number; hp: number; energy: number; stamina: number };
   apparatus: Record<string, number>;
@@ -41,6 +47,41 @@ export interface PlayerState {
   broodIds: string[];
   leaderId?: string;
 }
+
+export interface BossView {
+  name: string;
+  level: number;
+  hp: number;
+  maxHp: number;
+  expiresAt: number;
+  topDamagers: { name: string; damage: number }[];
+}
+
+export interface Reward {
+  grist?: number;
+  elixir?: number;
+  reagents?: number;
+  critterTier?: number;
+}
+
+export interface MissionView {
+  id: string;
+  label: string;
+  progress: number;
+  target: number;
+  done: boolean;
+  claimed: boolean;
+  reward: Reward;
+}
+
+export interface DailyView {
+  missions: MissionView[];
+  attendanceAvailable: boolean;
+  rouletteAvailable: boolean;
+  attendanceDay: number;
+}
+
+export type EggType = "crucible" | "refined" | "opus";
 
 export type SkillKey = "attack" | "defense" | "hp" | "energy" | "stamina";
 
@@ -70,10 +111,12 @@ export interface TransmuteOutcome {
 }
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+  // Only send a JSON content-type when there's actually a body — Fastify rejects
+  // an empty body that declares application/json (no-body POSTs like roulette).
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
-    headers: { "content-type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
+    headers: body !== undefined ? { "content-type": "application/json" } : {},
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const json = (await res.json()) as T & { error?: string };
   if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
@@ -117,6 +160,31 @@ export const api = {
     ),
   vaultWithdraw: (id: string, amount: number) =>
     req<PlayerState>("POST", `/players/${id}/vault/withdraw`, { amount }),
+  boss: () => req<BossView>("GET", "/boss"),
+  attackBoss: (id: string, mode: number) =>
+    req<{
+      result: { damage: number; bossHp: number; bossMaxHp: number; bossLevel: number; defeated: boolean; reward?: Reward };
+      state: PlayerState;
+    }>("POST", `/players/${id}/boss/attack`, { mode }),
+  daily: (id: string) => req<DailyView>("GET", `/players/${id}/daily`),
+  claimMission: (id: string, missionId: string) =>
+    req<{ reward: Reward; state: PlayerState }>("POST", `/players/${id}/daily/claim`, { missionId }),
+  attendanceClaim: (id: string) =>
+    req<{ result: { day: number; reward: Reward }; state: PlayerState }>(
+      "POST",
+      `/players/${id}/attendance/claim`,
+    ),
+  rouletteSpin: (id: string) =>
+    req<{ result: { prizeIndex: number; reward: Reward }; state: PlayerState }>(
+      "POST",
+      `/players/${id}/roulette/spin`,
+    ),
+  buyEgg: (id: string, type: EggType) =>
+    req<{ outcome: { critter: Critter; pity: boolean }; state: PlayerState }>(
+      "POST",
+      `/players/${id}/egg`,
+      { type },
+    ),
   raid: (attacker: string, defender: string) =>
     req<{ outcome: { win: boolean; gristStolen: number }; state: PlayerState }>("POST", "/raid", {
       attacker,

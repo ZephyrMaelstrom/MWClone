@@ -23,7 +23,12 @@ import {
   xpForLevel,
   PROGRESSION,
 } from "@cc/engine";
+import { ESSENCE_IDS } from "@cc/engine";
 import { type PlayerState, type SkillKey, newCritter } from "./store.js";
+import { GameError } from "./errors.js";
+import { recordDaily } from "./daily.js";
+
+export { GameError };
 
 /** Server-side RNG (fresh sequence per action). Override in tests for determinism. */
 let rngFactory: () => Rng = () => mulberry32((Math.random() * 2 ** 32) >>> 0);
@@ -31,16 +36,17 @@ export function setRngFactory(f: () => Rng): void {
   rngFactory = f;
 }
 
-export class GameError extends Error {}
+export type RegenKey = "energy" | "stamina" | "hp" | "bossAp";
 
 /** Effective cap for a regenerating resource = base(level) + skill points spent. */
-export function cap(p: PlayerState, key: "energy" | "stamina" | "hp"): number {
-  return resourceCap(key, p.level) + (p.skills?.[key] ?? 0);
+export function cap(p: PlayerState, key: RegenKey): number {
+  const skillBonus = key === "bossAp" ? 0 : (p.skills?.[key] ?? 0);
+  return resourceCap(key, p.level) + skillBonus;
 }
 
 /** Apply pending resource regen up to cap, mutating the player. */
 export function regenResources(p: PlayerState, now: number): void {
-  for (const key of ["energy", "stamina", "hp"] as const) {
+  for (const key of ["energy", "stamina", "hp", "bossAp"] as const) {
     const tsKey = `${key}Ts` as const;
     const c = cap(p, key);
     const elapsed = Math.max(0, now - p[tsKey]);
@@ -56,7 +62,7 @@ export function regenResources(p: PlayerState, now: number): void {
 /** Current value, cap, and seconds until the next +1 for a regenerating resource. */
 export function resourceView(
   p: PlayerState,
-  key: "energy" | "stamina" | "hp",
+  key: RegenKey,
   now: number,
 ): { value: number; max: number; secondsToNext: number } {
   const max = cap(p, key);
@@ -191,6 +197,7 @@ export function doTransmute(
 
   autoField(p);
   ensureLeader(p);
+  recordDaily(p, "transmutes", Date.now());
 
   return {
     success: result.success,
@@ -245,8 +252,63 @@ export function doQuest(p: PlayerState, now: number): QuestOutcome {
 
   autoField(p);
   ensureLeader(p);
+  recordDaily(p, "quests", now);
   return { gristGained: grist, xpGained: xp, captured };
 }
+
+// ---------------------------------------------------------------------------
+// Gacha eggs
+// ---------------------------------------------------------------------------
+
+export type EggType = "crucible" | "refined" | "opus";
+
+interface EggDef {
+  elixir: number;
+  floor: (level: number) => number;
+  span: number; // tiers above floor
+}
+
+const EGGS: Record<EggType, EggDef> = {
+  crucible: { elixir: 5, floor: (lvl) => Math.max(2, Math.floor(lvl / 8)), span: 3 },
+  refined: { elixir: 50, floor: (lvl) => Math.max(4, Math.floor(lvl / 6)), span: 3 },
+  opus: { elixir: 300, floor: () => 8, span: 2 },
+};
+
+const PITY_THRESHOLD = 30; // paid pulls without tier>=8 -> next guaranteed tier>=8
+
+export interface EggOutcome {
+  critter: Critter;
+  pity: boolean;
+}
+
+export function buyEgg(p: PlayerState, type: EggType): EggOutcome {
+  const def = EGGS[type];
+  if (!def) throw new GameError("Unknown egg");
+  if (p.elixir < def.elixir) throw new GameError("Not enough Elixir");
+  p.elixir -= def.elixir;
+
+  const rng = rngFactory();
+  const floor = def.floor(p.level);
+  let tier = Math.min(MAX_FROM_EGG, floor + Math.floor(rng() * (def.span + 1)));
+
+  // Pity: force a high tier if we've gone too long without one.
+  let pity = false;
+  if (p.pity + 1 >= PITY_THRESHOLD && tier < 8) {
+    tier = 8;
+    pity = true;
+  }
+  if (tier >= 8) p.pity = 0;
+  else p.pity += 1;
+
+  const essence = ESSENCE_IDS[Math.floor(rng() * ESSENCE_IDS.length)]!;
+  const critter = newCritter(tier as Tier, essence);
+  p.critters.push(critter);
+  autoField(p);
+  ensureLeader(p);
+  return { critter, pity };
+}
+
+const MAX_FROM_EGG = 10; // Magnum Opus (11) is evolution-only
 
 // ---------------------------------------------------------------------------
 // Apparatus, skills, vault
@@ -327,6 +389,7 @@ export function doRaid(attacker: PlayerState, defender: PlayerState, now: number
     defender.grist -= stolen;
     attacker.grist += stolen;
     grantXp(attacker, 5);
+    recordDaily(attacker, "raidWins", now);
   }
   if (defender.isGhost && defender.ghostBaselineGrist != null) {
     defender.grist = defender.ghostBaselineGrist;
