@@ -1,9 +1,10 @@
-# Project: Monster Catch · Merge · Battle (working title)
+# Crucible Critters
 
-An asynchronous, numbers-driven **monster collecting / merging / battling** game in the
-lineage of Gamevil's *Monster Warlord* — rebuilt with original branding and tuned for a
-**small group of eager players**, targeting **mobile (React Native / Flutter)** with a
-**monetization-ready** economy.
+An asynchronous, numbers-driven **critter collecting / transmuting / battling** game in the
+lineage of Gamevil's *Monster Warlord* — an alchemist's-lab reskin tuned for a **small group
+of eager players**, targeting **mobile (React Native / Flutter)** with a **monetization-ready**
+economy. Capture critters, **fuse them in the crucible** to transmute up a ladder of base
+metals toward the Magnum Opus, and raid rival labs.
 
 > This repo currently contains the **design**. Code (a playable prototype) comes next —
 > see [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) §16 for the MVP scope and §14 for the
@@ -16,7 +17,8 @@ lineage of Gamevil's *Monster Warlord* — rebuilt with original branding and tu
 
 ## Status
 - [x] Deep research on the reference game
-- [x] First-draft GDD (this commit)
-- [ ] Branding / theme locked (we're iterating — see GDD §3 and §17)
+- [x] First-draft GDD
+- [x] Branding / theme locked — **Crucible Critters** (GDD §3)
+- [ ] Mechanical tuning locked (in progress — GDD §17)
 - [ ] Economy & combat numbers playtested
 - [ ] Playable prototype (mobile)

@@ -1,7 +1,6 @@
-# Game Design Document — *(working title: "MergeLords")*
+# Game Design Document — **Crucible Critters**
 
-> **Status:** first draft. Branding/theme and final tuning are **open and intended for
-> iteration** (see §3 and §17). Everything here keeps the *Monster Warlord* functionality
+> **Status:** branding **locked** (§3); final tuning in progress (see §17). Everything here keeps the *Monster Warlord* functionality
 > but is adapted for **a small group of players**, built **mobile-first (React Native or
 > Flutter)**, and **monetization-ready** (the money systems exist but can be toggled off).
 >
@@ -50,21 +49,72 @@ fun is not twitch combat — it's **the gamble of merging**, **watching numbers 
 
 ---
 
-## 3. Branding & theme — **OPEN, let's iterate**
+## 3. Branding & theme — **LOCKED: *Crucible Critters***
 
-We need original IP (names, fiction, art direction, tier names). Three starting directions
-to react to — **not locked**:
+**The fantasy:** you're an **alchemist** running a back-room laboratory, capturing strange
+little **critters** (half-creature, half-substance) and **fusing them in a bubbling crucible**
+to transmute them up the ladder of refinement — chasing the legendary top-tier beast. The
+merge *is* an alchemical gamble: the brew transmutes beautifully... or curdles into slag.
 
-- **A. "MergeLords / Aether Beasts"** — high-fantasy summoned spirits; tiers as ranks of
-  power (Spark → … → Ascendant). Familiar, broad appeal.
-- **B. "Critter Crucible"** — alchemical lab theme; you *brew/fuse* critters in a crucible.
-  Leans into the merge-gamble fantasy; cozy, distinctive.
-- **C. "Voidlings"** — sci-fi/cosmic-horror; you capture rifts and fuse anomalies. Edgier,
-  great for a tight enthusiast group.
+**Tone:** cozy-creepy — ~80% warm candlelit apothecary whimsy, ~20% mad-science danger.
+**Art:** illuminated-manuscript-meets-apothecary; parchment UI, brass fittings, hand-inked +
+watercolor critters, warm candlelight; the "danger" palette (slag, aberrations) goes cold
+sickly-green. **Audio:** ambient crucible bubble + hearth crackle, glass clinks on tap, a
+bright bell on successful transmutation, a wet *crack* on failure.
 
-Branding decisions to make together (tracked in §17): game name, the 6 element names, the
-9 tier names, the premium-currency name, the social-unit name ("Pack"?), and art style.
-**For now the doc uses generic placeholders** so mechanics stay theme-agnostic.
+### 3.1 Canonical naming (use these everywhere)
+
+| Concept | Canonical name | (generic term used elsewhere in this doc) |
+|---|---|---|
+| Game title | **Crucible Critters** | — |
+| Creatures | **Critters** | monsters |
+| Merge / fusion | **Transmutation** (in the **Crucible**) | merge/fusion |
+| Sure-merge consumable | **Catalyst** | sure-merge |
+| Failed-merge byproduct | **Slag** (a random same-tier critter) + **Residue shards** | fail output / fragments |
+| Soft currency | **Grist** | gold |
+| Premium currency | **Elixir** (a glowing potion) | gems |
+| PvP currency | **Renown** | honor |
+| Summon shards | **Reagents** (Universal = **Prima Materia**) | cores |
+| Idle income buildings | **Apparatus** (alembics, bellows, athanors) | buildings |
+| Premium-drip building | **Reagent Vein** | mine |
+| Social unit | **Coven** | pack / guild / alliance |
+| World boss | **The Aberration** (a transmutation gone loose) | world boss |
+| Coven boss | **Homunculus** | pack boss |
+| Ranked PvP | **The Exhibition** | arena |
+| PvP attack | **raid a rival lab** | open-world PvP |
+
+### 3.2 The nine tiers — the transmutation ladder (base metals → Magnum Opus)
+
+| # | Tier | Feel |
+|---|---|---|
+| 1 | **Dross** | grubby slag-critters; **uncombinable** starters |
+| 2 | Lead | dull, heavy |
+| 3 | Tin | |
+| 4 | Iron | |
+| 5 | Copper | |
+| 6 | Silver | critters begin to gleam, more ornate |
+| 7 | Gold | radiant, majestic |
+| 8 | Quintessence | crystalline, otherworldly |
+| 9 | **Magnum Opus** | peak; pure radiant transmuted being; **Evolution-only** |
+
+Critters physically **refine** in appearance as they climb (grubby → ornate → luminous).
+
+### 3.3 The six essences (elements)
+
+| Essence | AT:DF lean | Vibe | Leader effect |
+|---|---|---|---|
+| **Brimstone** | 6:1 (max attack) | volatile sulfurous red | team ATK +1–12% |
+| **Vapor** | 5:2 | airy pale violet | +max critters fielded |
+| **Ember** | 4:3 | warm orange | Energy regen speedup |
+| **Brine** | 3:4 | teal | Stamina regen speedup |
+| **Loam** | 2:5 | earthy green-brown | Grist income +5–60% |
+| **Gleam** | 1:6 (max defense) | golden, holy | team DEF +1–12% |
+
+> Steering the transmutation grid reads as **recipe-craft**: e.g. Ember + Brine → Brimstone.
+> Players learn recipes to push toward **Brimstone** (offense) or **Gleam** (defense).
+
+> **Note:** some mechanical sections below still use generic terms (monster, gold, gems,
+> pack, etc.) — map them via the table in §3.1. Tier/essence names in §4 are the canon.
 
 ---
 
@@ -73,17 +123,17 @@ Branding decisions to make together (tracked in §17): game name, the 6 element 
 ### 4.1 Tiers (compressed 22 → 9) **[DIVERGENCE]**
 A small group should reach endgame in **weeks, not years**, so we collapse the ladder:
 
-| # | Tier (placeholder) | Role | ~Total power (AT+DF) |
+| # | Tier | Role | ~Total power (AT+DF) |
 |---|---|---|---|
-| 1 | Common | starter, **uncombinable** | ~25 |
-| 2 | Uncommon | merge entry | ~70 |
-| 3 | Rare | | ~200 |
-| 4 | Epic | | ~550 |
-| 5 | Legend | | ~1,500 |
-| 6 | Mythic | | ~4,200 |
-| 7 | Ancient | | ~12,000 |
-| 8 | Godlike | | ~34,000 |
-| 9 | **Ascendant** | peak, **Evolution-only** | ~95,000 |
+| 1 | Dross | starter, **uncombinable** | ~25 |
+| 2 | Lead | merge entry | ~70 |
+| 3 | Tin | | ~200 |
+| 4 | Iron | | ~550 |
+| 5 | Copper | | ~1,500 |
+| 6 | Silver | | ~4,200 |
+| 7 | Gold | | ~12,000 |
+| 8 | Quintessence | | ~34,000 |
+| 9 | **Magnum Opus** | peak, **Evolution-only** | ~95,000 |
 
 Power grows ~**2.8×/tier** (geometric, like MW but shorter). Each tier ships with **6–8
 hand-designed monsters** (one+ per element) → ~60 monsters total for the prototype vs MW's
@@ -98,14 +148,14 @@ Omega/Star are post-MVP.
 - **Two stats: Attack (AT) / Defense (DF).** No per-monster XP/level — **tier = level.**
 - **6 elements** with fixed AT:DF lean + a leader effect (identical roles to MW):
 
-  | Element (placeholder) | AT:DF | Leader effect (scales with leader power) |
+  | Essence | AT:DF | Leader effect (scales with leader power) |
   |---|---|---|
-  | Shadow (≈Dark) | 6:1 | team ATK +1–12% |
-  | Wind (≈Air) | 5:2 | +max monsters fielded |
-  | Flame (≈Fire) | 4:3 | Energy regen speedup |
-  | Tide (≈Water) | 3:4 | Stamina regen speedup |
-  | Stone (≈Earth) | 2:5 | gold income +5–60% |
-  | Light (≈Holy) | 1:6 | team DEF +1–12% |
+  | Brimstone | 6:1 | team ATK +1–12% |
+  | Vapor | 5:2 | +max critters fielded |
+  | Ember | 4:3 | Energy regen speedup |
+  | Brine | 3:4 | Stamina regen speedup |
+  | Loam | 2:5 | Grist income +5–60% |
+  | Gleam | 1:6 | team DEF +1–12% |
 
 - **No combat element advantage** (same as MW) — elements matter for stat lean, leaders, and
   fusion steering only. Keeps combat math simple and honest.
@@ -219,13 +269,13 @@ variance band widens to ±25% at tiers 8–9 (matches MW "top tiers more random"
 ## 8. Economy & currencies
 
 ### 8.1 Currencies
-- **Gold** (soft): buildings, quests, PvP theft, bosses → spent on merging, monsters, healing,
-  buildings. **Bank** protects raidable gold; **[DIVERGENCE]** lower the infamous 20% fee to
-  ~**5%** (MW's 20% was widely hated), and banked gold *is* spendable.
-- **Gems** (premium, placeholder name): start with a free grant; earnable free via dailies/
-  mines/roulette/boss; **buyable with cash** (combo bonus on stacked purchases). Spent on
-  eggs, sure-merges, recharges, recovers, cosmetics.
-- **Honor** (PvP currency) and **Cores** (summon shards) as secondary points.
+- **Grist** (soft): apparatus, quests, raid theft, bosses → spent on transmuting, critters,
+  healing, apparatus. **Vault** protects raidable Grist; **[DIVERGENCE]** lower the infamous
+  20% fee to ~**5%** (MW's 20% was widely hated), and vaulted Grist *is* spendable.
+- **Elixir** (premium): start with a free grant; earnable free via dailies/reagent-veins/
+  roulette/boss; **buyable with cash** (combo bonus on stacked purchases). Spent on eggs,
+  Catalysts (sure-transmutes), recharges, recovers, cosmetics.
+- **Renown** (PvP currency) and **Reagents** (summon shards) as secondary points.
 
 ### 8.2 Idle income (buildings + mines, NOT monsters — MW parity)
 Buildings auto-collect hourly (offline-inclusive), cost `Base + Increase × owned`. Compressed
