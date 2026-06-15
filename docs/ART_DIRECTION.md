@@ -1,9 +1,10 @@
 # Art Direction — *Crucible Critters*
 
-> **Status:** Concept art not yet generated — the Higgsfield account is on the **free plan
-> with 0 credits**, so image generation is currently blocked. Add credits (or tell me to use
-> another path) and these prompts are ready to one-shot. The app currently uses themed
-> placeholder vector cards + a Skia-drawn crucible.
+> **Status:** Core art generated & wired in. Critters now have **3 refinement stages per
+> essence** (low/mid/high) — 18 transparent (background-removed) pieces — plus the Magnum
+> Opus showpiece, the crucible (success + slag), and the app icon. `stageFor(tier)` maps
+> tiers 1-4→low, 5-8→mid, 9-10→high, 11→Magnum Opus (see `apps/mobile/src/assets.ts`).
+> Future polish: bespoke per-tier (all 11) art per essence if desired.
 
 ## Visual identity
 - **Genre feel:** cozy-creepy alchemist's apothecary × illuminated medieval manuscript.
