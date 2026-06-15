@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { api, type DailyView, type EggType, type Reward, type SkillKey } from "../api";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { api, type DailyView, type EggType, type EventType, type Reward, type SkillKey } from "../api";
 import { useGame } from "../state";
 import { confirmDialog, notify } from "../dialog";
 import { theme } from "../theme";
@@ -33,6 +34,39 @@ export function ProfileScreen() {
   const { player, setPlayer, resetProgress, newProfile } = useGame();
   const [busy, setBusy] = useState(false);
   const [daily, setDaily] = useState<DailyView | null>(null);
+  const [showOps, setShowOps] = useState(false);
+  const [adminToken, setAdminToken] = useState("");
+
+  useEffect(() => {
+    AsyncStorage.getItem("cc.adminToken").then((t) => t && setAdminToken(t));
+  }, []);
+
+  const saveToken = (t: string) => {
+    setAdminToken(t);
+    AsyncStorage.setItem("cc.adminToken", t).catch(() => {});
+  };
+
+  const startEvent = async (type: EventType, value: number, name: string, hours: number) => {
+    if (!adminToken) {
+      notify("No token", "Enter your operator token first.");
+      return;
+    }
+    try {
+      await api.adminStartEvent(adminToken, { type, value, name, hours });
+      notify("Event started", `${name} for ${hours}h`);
+    } catch (e) {
+      notify("Could not start", (e as Error).message);
+    }
+  };
+
+  const clearEvents = async () => {
+    try {
+      await api.adminClearEvents(adminToken);
+      notify("Events cleared", "");
+    } catch (e) {
+      notify("Could not clear", (e as Error).message);
+    }
+  };
 
   const loadDaily = useCallback(async () => {
     if (!player) return;
@@ -239,6 +273,36 @@ export function ProfileScreen() {
       <Pressable onPress={confirmNew} disabled={busy} style={[styles.button, styles.danger]}>
         <Text style={styles.buttonText}>Start New Profile</Text>
       </Pressable>
+
+      <Pressable onPress={() => setShowOps((v) => !v)} style={styles.opsToggle}>
+        <Text style={styles.opsToggleText}>{showOps ? "▾ Operator tools" : "▸ Operator tools"}</Text>
+      </Pressable>
+      {showOps && (
+        <View style={styles.panel}>
+          <Text style={styles.hint}>Run live events for your group (needs your server's ADMIN_TOKEN).</Text>
+          <TextInput
+            value={adminToken}
+            onChangeText={saveToken}
+            placeholder="Operator token"
+            placeholderTextColor={theme.colors.textDim}
+            secureTextEntry
+            autoCapitalize="none"
+            style={styles.input}
+          />
+          <Pressable onPress={() => startEvent("merge_success", 0.2, "Merge Frenzy", 48)} style={[styles.smallBtn, styles.opsBtn]}>
+            <Text style={styles.smallText}>Merge Event +20% (48h)</Text>
+          </Pressable>
+          <Pressable onPress={() => startEvent("double_grist", 2, "Double Grist", 24)} style={[styles.smallBtn, styles.opsBtn]}>
+            <Text style={styles.smallText}>Double Grist (24h)</Text>
+          </Pressable>
+          <Pressable onPress={() => startEvent("boss_frenzy", 2, "Aberration Frenzy", 24)} style={[styles.smallBtn, styles.opsBtn]}>
+            <Text style={styles.smallText}>Boss Frenzy ×2 (24h)</Text>
+          </Pressable>
+          <Pressable onPress={clearEvents} style={[styles.button, styles.danger]}>
+            <Text style={styles.buttonText}>Clear all events</Text>
+          </Pressable>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -304,6 +368,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.space(2),
   },
   claimMiniText: { color: "#1c1410", fontWeight: "800", fontSize: 12 },
+  opsToggle: { paddingVertical: theme.space(1), alignItems: "center" },
+  opsToggleText: { color: theme.colors.textDim, fontWeight: "700" },
+  opsBtn: { marginBottom: theme.space(1) },
+  input: {
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.panelEdge,
+    borderRadius: theme.radius,
+    color: theme.colors.text,
+    paddingHorizontal: theme.space(1.5),
+    paddingVertical: theme.space(1),
+    marginBottom: theme.space(1),
+  },
   button: {
     borderRadius: theme.radius,
     paddingVertical: theme.space(2),

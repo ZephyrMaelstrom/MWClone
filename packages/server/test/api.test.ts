@@ -248,6 +248,44 @@ describe("P1: daily loop, eggs, boss endpoint", () => {
   });
 });
 
+describe("events (public + admin)", () => {
+  it("admin routes require ADMIN_TOKEN", async () => {
+    delete process.env.ADMIN_TOKEN;
+    const res = await app.inject({
+      method: "POST",
+      url: "/admin/events",
+      payload: { type: "merge_success", value: 0.2, hours: 24 },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it("starts an event with the right token and lists it publicly", async () => {
+    process.env.ADMIN_TOKEN = "secret";
+    const bad = await app.inject({
+      method: "POST",
+      url: "/admin/events",
+      headers: { "x-admin-token": "nope" },
+      payload: { type: "merge_success", value: 0.2, hours: 24 },
+    });
+    expect(bad.statusCode).toBe(401);
+
+    const ok = await app.inject({
+      method: "POST",
+      url: "/admin/events",
+      headers: { "x-admin-token": "secret" },
+      payload: { type: "merge_success", value: 0.2, name: "Merge Frenzy", hours: 24 },
+    });
+    expect(ok.statusCode).toBe(200);
+
+    const events = (await app.inject({ method: "GET", url: "/events" })).json();
+    expect(events.some((e: { type: string }) => e.type === "merge_success")).toBe(true);
+
+    await app.inject({ method: "POST", url: "/admin/events/clear", headers: { "x-admin-token": "secret" } });
+    expect((await app.inject({ method: "GET", url: "/events" })).json()).toEqual([]);
+    delete process.env.ADMIN_TOKEN;
+  });
+});
+
 describe("reset & delete", () => {
   it("reset restores a fresh starter profile, keeping the same id", async () => {
     setRngFactory(() => constantRng(0.99)); // no capture

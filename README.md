@@ -45,6 +45,8 @@ codebase later (EAS Build).
 - [x] Concept art generated + wired in (crucible, app icon, 6 essences, Magnum Opus)
 - [x] Web build + single-deployable (server serves the app) + Render blueprint (`docs/DEPLOY.md`)
 - [x] Ghost rivals (6 "Wandering Alchemists", difficulty ladder, auto-refill) so Raid is never empty
+- [x] P0: brood/leader management, apparatus shop, skill points, vault
+- [x] P1: World Boss (The Aberration), daily loop (missions/attendance/roulette), gacha eggs, events engine
 - [ ] Deploy to Render and share the link with the group
 - [ ] Android APK via EAS Build
 - [ ] Economy & combat numbers playtested

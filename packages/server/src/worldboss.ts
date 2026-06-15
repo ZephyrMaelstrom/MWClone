@@ -3,6 +3,7 @@ import { dbGetMeta, dbSetMeta } from "./db.js";
 import { GameError } from "./errors.js";
 import { cap, regenResources } from "./game.js";
 import { applyReward, recordDaily, type Reward } from "./daily.js";
+import { bossDamageMultiplier } from "./events.js";
 import { getPlayer, savePlayer, type PlayerState } from "./store.js";
 
 export interface WorldBoss {
@@ -90,7 +91,7 @@ export function attackBoss(p: PlayerState, mode: number, now: number): BossAttac
   const brood = p.critters.filter((c) => p.broodIds.includes(c.id));
   const leader = p.critters.find((c) => c.id === p.leaderId);
   const atk = broodTotals(brood, leader).atk + (p.skills?.attack ?? 0);
-  const damage = Math.max(1, Math.round(atk * m.mult));
+  const damage = Math.max(1, Math.round(atk * m.mult * bossDamageMultiplier(now)));
 
   b.hp -= damage;
   b.damage[p.id] = (b.damage[p.id] ?? 0) + damage;

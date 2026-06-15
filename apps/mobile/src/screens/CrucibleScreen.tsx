@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { TIERS, canTransmute, catalystCost, gristCost, successRate, type Critter, type Tier } from "@cc/engine";
 import { api, type TransmuteOutcome } from "../api";
@@ -14,6 +14,20 @@ export function CrucibleScreen() {
   const [catalyst, setCatalyst] = useState(false);
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<TransmuteOutcome | null>(null);
+  const [mergeBonus, setMergeBonus] = useState(0);
+  const [eventName, setEventName] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .events()
+      .then((evs) => {
+        const merges = evs.filter((e) => e.type === "merge_success");
+        const bonus = Math.min(0.4, merges.reduce((a, e) => a + e.value, 0));
+        setMergeBonus(bonus);
+        setEventName(merges[0]?.name ?? null);
+      })
+      .catch(() => {});
+  }, []);
 
   const critters = player?.critters ?? [];
 
@@ -36,7 +50,11 @@ export function CrucibleScreen() {
 
   const ready = picked.length === 2;
   const resultTier: Tier | null = lockTier ? ((lockTier + 1) as Tier) : null;
-  const rate = resultTier ? (catalyst ? 1 : successRate(resultTier)) : 0;
+  const rate = resultTier
+    ? catalyst
+      ? 1
+      : Math.min(0.95, successRate(resultTier) + mergeBonus)
+    : 0;
 
   const transmute = async () => {
     if (!player || !ready) return;
@@ -55,6 +73,13 @@ export function CrucibleScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {mergeBonus > 0 && (
+        <View style={styles.eventBanner}>
+          <Text style={styles.eventText}>
+            🔥 {eventName ?? "Merge Event"}: +{Math.round(mergeBonus * 100)}% success
+          </Text>
+        </View>
+      )}
       <View style={styles.vessel}>
         <CrucibleArt slag={last ? !last.success : false} />
         <Text style={styles.hint}>
@@ -120,6 +145,14 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   container: { padding: theme.space(2), paddingBottom: theme.space(6) },
+  eventBanner: {
+    backgroundColor: theme.colors.ember,
+    borderRadius: theme.radius,
+    padding: theme.space(1),
+    alignItems: "center",
+    marginBottom: theme.space(1),
+  },
+  eventText: { color: "#1c1410", fontWeight: "800" },
   vessel: { alignItems: "center", marginBottom: theme.space(1) },
   hint: { color: theme.colors.textDim, marginTop: theme.space(1), textAlign: "center" },
   panel: {

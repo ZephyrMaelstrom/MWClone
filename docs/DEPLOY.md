@@ -23,6 +23,11 @@ group opens in any phone browser. The same codebase later produces an Android AP
 
 > No PC, no app store, no install.
 
+### Running live events (operator)
+Set an **`ADMIN_TOKEN`** env var on the service (Render dashboard → Environment). Then in
+the app: **Lab → Operator tools**, paste the token, and start a Merge Event / Double Grist /
+Boss Frenzy for your group. Without `ADMIN_TOKEN` set, the admin routes are disabled (403).
+
 ### Free-tier caveats (fine for a small group MVP)
 - **Cold start:** a free instance sleeps after ~15 min idle; the first hit wakes it (~30s).
 - **Data durability:** the free plan has an **ephemeral disk**, so the SQLite file resets on

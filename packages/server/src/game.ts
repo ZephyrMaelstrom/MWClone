@@ -27,6 +27,7 @@ import { ESSENCE_IDS } from "@cc/engine";
 import { type PlayerState, type SkillKey, newCritter } from "./store.js";
 import { GameError } from "./errors.js";
 import { recordDaily } from "./daily.js";
+import { mergeSuccessBonus, questGristMultiplier } from "./events.js";
 
 export { GameError };
 
@@ -182,7 +183,7 @@ export function doTransmute(
 
   const result = transmute(
     { tier: a.tier, essenceA: a.essence, essenceB: b.essence, gradeA: a.grade, gradeB: b.grade },
-    { catalyst },
+    { catalyst, successBonus: mergeSuccessBonus(Date.now()) },
     rngFactory(),
   );
 
@@ -237,7 +238,7 @@ export function doQuest(p: PlayerState, now: number): QuestOutcome {
   if (wasFull) p.energyTs = now;
 
   const rng = rngFactory();
-  const grist = 200 + Math.floor(rng() * 300);
+  const grist = Math.round((200 + Math.floor(rng() * 300)) * questGristMultiplier(now));
   const xp = 10 + Math.floor(rng() * 10);
   p.grist += grist;
   grantXp(p, xp);

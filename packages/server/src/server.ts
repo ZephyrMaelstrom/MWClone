@@ -42,6 +42,7 @@ import {
   rouletteSpin,
 } from "./daily.js";
 import { attackBoss, bossView } from "./worldboss.js";
+import { activeEvents, clearEvents, startEvent, type EventType } from "./events.js";
 import type { SkillKey } from "./store.js";
 
 const now = () => Date.now();
@@ -250,6 +251,26 @@ export function buildServer(): FastifyInstance {
     });
   });
 
+  // Active events (client banner + applied to transmute/quest/boss).
+  app.get("/events", async () => activeEvents(now()));
+
+  // Operator controls (require ADMIN_TOKEN env + x-admin-token header).
+  app.post("/admin/events", async (req, reply) => {
+    if (!requireAdmin(req, reply)) return reply;
+    const body = (req.body ?? {}) as { type?: EventType; value?: number; name?: string; hours?: number };
+    if (!body.type || body.value == null || !body.hours) {
+      return reply.code(400).send({ error: "type, value, hours required" });
+    }
+    startEvent(body.type, body.value, body.name ?? body.type, body.hours, now());
+    return activeEvents(now());
+  });
+
+  app.post("/admin/events/clear", async (req, reply) => {
+    if (!requireAdmin(req, reply)) return reply;
+    clearEvents();
+    return [];
+  });
+
   // World Boss — "The Aberration" (shared co-op).
   app.get("/boss", async () => bossView(now()));
 
@@ -364,6 +385,22 @@ export function buildServer(): FastifyInstance {
   }
 
   return app;
+}
+
+function requireAdmin(
+  req: import("fastify").FastifyRequest,
+  reply: import("fastify").FastifyReply,
+): boolean {
+  const token = process.env.ADMIN_TOKEN;
+  if (!token) {
+    reply.code(403).send({ error: "Admin disabled — set ADMIN_TOKEN" });
+    return false;
+  }
+  if (req.headers["x-admin-token"] !== token) {
+    reply.code(401).send({ error: "Bad admin token" });
+    return false;
+  }
+  return true;
 }
 
 function guard<T>(reply: import("fastify").FastifyReply, fn: () => T) {

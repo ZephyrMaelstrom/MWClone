@@ -83,6 +83,17 @@ export interface DailyView {
 
 export type EggType = "crucible" | "refined" | "opus";
 
+export type EventType = "merge_success" | "double_grist" | "boss_frenzy";
+
+export interface GameEvent {
+  id: string;
+  type: EventType;
+  name: string;
+  value: number;
+  startsAt: number;
+  endsAt: number;
+}
+
 export type SkillKey = "attack" | "defense" | "hp" | "energy" | "stamina";
 
 export interface ApparatusDef {
@@ -120,6 +131,19 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   });
   const json = (await res.json()) as T & { error?: string };
   if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+  return json;
+}
+
+async function adminReq<T>(method: string, path: string, token: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = { "x-admin-token": token };
+  if (body !== undefined) headers["content-type"] = "application/json";
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const json = (await res.json()) as T & { error?: string };
+  if (!res.ok) throw new Error((json as { error?: string }).error ?? `HTTP ${res.status}`);
   return json;
 }
 
@@ -185,6 +209,12 @@ export const api = {
       `/players/${id}/egg`,
       { type },
     ),
+  events: () => req<GameEvent[]>("GET", "/events"),
+  adminStartEvent: (
+    token: string,
+    body: { type: EventType; value: number; name: string; hours: number },
+  ) => adminReq<GameEvent[]>("POST", "/admin/events", token, body),
+  adminClearEvents: (token: string) => adminReq<GameEvent[]>("POST", "/admin/events/clear", token),
   raid: (attacker: string, defender: string) =>
     req<{ outcome: { win: boolean; gristStolen: number }; state: PlayerState }>("POST", "/raid", {
       attacker,

@@ -22,3 +22,7 @@ services:
         value: --experimental-sqlite
       - key: CC_DB_PATH
         value: /var/data/cc.sqlite
+      # Operator token for running live events (Lab -> Operator tools). Set this
+      # value in the Render dashboard; leave unset to disable admin routes.
+      - key: ADMIN_TOKEN
+        sync: false
