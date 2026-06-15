@@ -11,3 +11,5 @@ coverage/
 data/
 *.sqlite
 *.sqlite-journal
+apps/mobile/dist/
+packages/server/public/

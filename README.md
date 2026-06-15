@@ -18,12 +18,14 @@ docs/             design + tuning + research + art direction
 ```bash
 pnpm install
 pnpm -r test                 # engine (31) + server (9) tests
-pnpm -C packages/server dev  # API on http://localhost:3000 (SQLite at data/cc.sqlite)
-pnpm -C apps/mobile start    # Expo client (needs Expo toolchain + device/sim)
+pnpm build:web               # export web app → packages/server/public
+pnpm start                   # ONE url serves the web app + API on http://localhost:3000
 ```
-The engine and server are verified in this environment (persistence survives restarts;
-profile reset works); the mobile app is scaffolded and typechecks but needs the Expo
-toolchain/simulator to boot (see `apps/mobile/README.md`).
+The web client + server bundle into a **single deployable** (one URL, any phone browser,
+no install). Deploy from your phone via Render — see [`docs/DEPLOY.md`](docs/DEPLOY.md).
+Verified here: engine/server tests pass, persistence survives restarts, the web build bundles
+(426 modules) and the iOS bundle compiles (773 modules). An Android APK uses the same
+codebase later (EAS Build).
 
 ## Documents
 - [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) — the full Game Design Document (GDD).
@@ -40,7 +42,9 @@ toolchain/simulator to boot (see `apps/mobile/README.md`).
 - [x] Client decision: **React Native (Expo)** + Skia/Reanimated
 - [x] MVP prototype scaffolded — engine + server verified, mobile client typechecks
 - [x] SQLite persistence (survives restarts) + profile reset/delete + on-device profile id
-- [ ] Concept art generated (blocked: Higgsfield free plan, 0 credits — see `docs/ART_DIRECTION.md`)
-- [ ] Boot mobile app on device/simulator + iterate visuals
+- [x] Concept art generated + wired in (crucible, app icon, 6 essences, Magnum Opus)
+- [x] Web build + single-deployable (server serves the app) + Render blueprint (`docs/DEPLOY.md`)
+- [ ] Deploy to Render and share the link with the group
+- [ ] Android APK via EAS Build
 - [ ] Economy & combat numbers playtested
 - [ ] Playable prototype (mobile)

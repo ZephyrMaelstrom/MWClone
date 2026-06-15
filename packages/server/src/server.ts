@@ -1,4 +1,9 @@
+import { existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import Fastify, { type FastifyInstance } from "fastify";
+import cors from "@fastify/cors";
+import fastifyStatic from "@fastify/static";
 import { ESSENCES, TIERS } from "@cc/engine";
 import {
   allPlayers,
@@ -47,8 +52,20 @@ function publicState(p: PlayerState) {
   };
 }
 
+/** Directory holding the exported web app (if built). Override with WEB_DIR. */
+function webDir(): string | null {
+  const candidates = [
+    process.env.WEB_DIR,
+    resolve(dirname(fileURLToPath(import.meta.url)), "../public"),
+  ].filter(Boolean) as string[];
+  return candidates.find((d) => existsSync(join(d, "index.html"))) ?? null;
+}
+
 export function buildServer(): FastifyInstance {
   const app = Fastify({ logger: false });
+
+  // Allow the web client to call the API (same-origin in prod; permissive otherwise).
+  app.register(cors, { origin: true });
 
   app.get("/health", async () => ({ ok: true }));
 
@@ -129,6 +146,19 @@ export function buildServer(): FastifyInstance {
       return { outcome, state: publicState(attacker) };
     });
   });
+
+  // Serve the exported web app (so one URL hosts both the API and the client).
+  const web = webDir();
+  if (web) {
+    app.register(fastifyStatic, { root: web });
+    // SPA fallback: serve index.html for unmatched GET routes.
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method === "GET" && !req.url.startsWith("/players") && req.url !== "/health") {
+        return reply.sendFile("index.html");
+      }
+      return reply.code(404).send({ error: "Not found" });
+    });
+  }
 
   return app;
 }

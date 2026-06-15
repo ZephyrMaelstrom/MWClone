@@ -1,9 +1,16 @@
+import { Platform } from "react-native";
 import Constants from "expo-constants";
 import type { Critter } from "@cc/engine";
 
+const configuredBase = (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)
+  ?.apiBaseUrl;
+
+/**
+ * On web the server hosts the app itself, so call the API same-origin ("" = relative).
+ * On native, use the configured apiBaseUrl (set to your LAN IP / deployed URL).
+ */
 const BASE_URL: string =
-  (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)?.apiBaseUrl ??
-  "http://localhost:3000";
+  Platform.OS === "web" ? "" : (configuredBase ?? "http://localhost:3000");
 
 export interface PlayerState {
   id: string;

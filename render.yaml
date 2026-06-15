@@ -1,0 +1,13 @@
+# Render.com blueprint — one-click deploy from GitHub (no PC needed).
+# render.com -> New -> Blueprint -> connect this repo. Free plan.
+services:
+  - type: web
+    name: crucible-critters
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_OPTIONS
+        value: --experimental-sqlite

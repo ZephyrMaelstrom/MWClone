@@ -1,0 +1,8 @@
+node_modules
+**/node_modules
+apps/mobile/dist
+packages/server/public
+packages/server/data
+**/.expo
+.git
+*.log

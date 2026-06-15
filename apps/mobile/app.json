@@ -12,6 +12,7 @@
       "backgroundColor": "#1c1410",
       "resizeMode": "contain"
     },
+    "web": { "bundler": "metro", "output": "single" },
     "ios": { "supportsTablet": true },
     "android": {
       "adaptiveIcon": {
