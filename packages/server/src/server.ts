@@ -86,7 +86,7 @@ export function buildServer(): FastifyInstance {
   });
 
   app.get("/players", async () =>
-    allPlayers().map((p) => ({ id: p.id, name: p.name, level: p.level })),
+    allPlayers().map((p) => ({ id: p.id, name: p.name, level: p.level, isGhost: !!p.isGhost })),
   );
 
   app.post("/players/:id/claim", async (req, reply) => {

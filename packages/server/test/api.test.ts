@@ -4,6 +4,7 @@ import { buildServer } from "../src/server.js";
 import { resetStore } from "../src/store.js";
 import { setRngFactory } from "../src/game.js";
 import { dbLoadAll } from "../src/db.js";
+import { seedGhosts } from "../src/ghosts.js";
 
 let app: ReturnType<typeof buildServer>;
 
@@ -121,6 +122,35 @@ describe("reset & delete", () => {
     expect(del.statusCode).toBe(204);
     const get = await app.inject({ method: "GET", url: `/players/${p.id}` });
     expect(get.statusCode).toBe(404);
+  });
+});
+
+describe("ghost rivals", () => {
+  it("seeds wandering alchemists that appear in the rival list", async () => {
+    const n = seedGhosts(Date.now());
+    expect(n).toBeGreaterThan(0);
+    expect(seedGhosts(Date.now())).toBe(0); // idempotent
+    const list = (await app.inject({ method: "GET", url: "/players" })).json();
+    const ghosts = list.filter((p: { isGhost: boolean }) => p.isGhost);
+    expect(ghosts.length).toBe(n);
+  });
+
+  it("a ghost is raidable and refills its Grist to baseline afterwards", async () => {
+    setRngFactory(() => constantRng(0.5));
+    seedGhosts(Date.now());
+    const me = await createPlayer("Me");
+    const list = (await app.inject({ method: "GET", url: "/players" })).json();
+    const soot = list.find((p: { name: string }) => p.name === "Soot the Apprentice");
+    expect(soot).toBeDefined();
+    const before = (await app.inject({ method: "GET", url: `/players/${soot.id}` })).json().grist;
+    const res = await app.inject({
+      method: "POST",
+      url: "/raid",
+      payload: { attacker: me.id, defender: soot.id },
+    });
+    expect(res.statusCode).toBe(200);
+    const after = (await app.inject({ method: "GET", url: `/players/${soot.id}` })).json().grist;
+    expect(after).toBe(before); // refilled to baseline regardless of outcome
   });
 });
 

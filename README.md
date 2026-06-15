@@ -9,7 +9,7 @@ metals toward the Magnum Opus, and raid rival labs.
 ## Monorepo layout (pnpm workspace)
 ```
 packages/engine   @cc/engine  — shared game logic (config-as-data + pure fns), 31 tests
-packages/server   @cc/server  — Fastify API + SQLite persistence + reset, 9 tests
+packages/server   @cc/server  — Fastify API + SQLite + reset + ghost rivals, 11 tests
 apps/mobile       @cc/mobile  — Expo / React Native client (Crucible centerpiece)
 docs/             design + tuning + research + art direction
 ```
@@ -44,6 +44,7 @@ codebase later (EAS Build).
 - [x] SQLite persistence (survives restarts) + profile reset/delete + on-device profile id
 - [x] Concept art generated + wired in (crucible, app icon, 6 essences, Magnum Opus)
 - [x] Web build + single-deployable (server serves the app) + Render blueprint (`docs/DEPLOY.md`)
+- [x] Ghost rivals (6 "Wandering Alchemists", difficulty ladder, auto-refill) so Raid is never empty
 - [ ] Deploy to Render and share the link with the group
 - [ ] Android APK via EAS Build
 - [ ] Economy & combat numbers playtested

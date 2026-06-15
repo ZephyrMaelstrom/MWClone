@@ -31,6 +31,9 @@ export interface PlayerState {
   leaderId?: string;
   broodIds: string[]; // critters fielded for offense/defense
   createdTs: number;
+  // ghost (bot rival) fields
+  isGhost?: boolean;
+  ghostBaselineGrist?: number; // ghosts refill to this after being raided
 }
 
 /** Write-through in-memory cache over the SQLite store. */
@@ -84,6 +87,27 @@ function freshState(id: string, name: string, now: number): PlayerState {
 
 export function createPlayer(name: string, now: number): PlayerState {
   const p = freshState(randomUUID(), name, now);
+  players.set(p.id, p);
+  dbUpsert(p);
+  return p;
+}
+
+/** Create a ghost (bot) rival with a custom level, brood and farmable Grist. */
+export function createGhost(
+  name: string,
+  level: number,
+  grist: number,
+  brood: Critter[],
+  now: number,
+): PlayerState {
+  const p = freshState(randomUUID(), name, now);
+  p.isGhost = true;
+  p.level = level;
+  p.grist = grist;
+  p.ghostBaselineGrist = grist;
+  p.critters = brood;
+  p.broodIds = brood.map((c) => c.id);
+  p.leaderId = brood.find((c) => c.essence === "brimstone")?.id ?? brood[0]?.id;
   players.set(p.id, p);
   dbUpsert(p);
   return p;

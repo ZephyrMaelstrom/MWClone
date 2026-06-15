@@ -194,5 +194,9 @@ export function doRaid(attacker: PlayerState, defender: PlayerState, now: number
     attacker.grist += stolen;
     grantXp(attacker, 5);
   }
+  // Ghost rivals refill to baseline so they're always worth raiding.
+  if (defender.isGhost && defender.ghostBaselineGrist != null) {
+    defender.grist = defender.ghostBaselineGrist;
+  }
   return { win: r.win, gristStolen: stolen, attackerRoll: r.attackerRoll, defenderRoll: r.defenderRoll };
 }

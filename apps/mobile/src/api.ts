@@ -76,5 +76,6 @@ export const api = {
       attacker,
       defender,
     }),
-  listPlayers: () => req<{ id: string; name: string; level: number }[]>("GET", "/players"),
+  listPlayers: () =>
+    req<{ id: string; name: string; level: number; isGhost: boolean }[]>("GET", "/players"),
 };

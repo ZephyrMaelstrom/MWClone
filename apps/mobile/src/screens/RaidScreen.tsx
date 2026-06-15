@@ -8,6 +8,7 @@ interface Rival {
   id: string;
   name: string;
   level: number;
+  isGhost: boolean;
 }
 
 export function RaidScreen() {
@@ -57,7 +58,9 @@ export function RaidScreen() {
         renderItem={({ item }) => (
           <View style={styles.rivalRow}>
             <Text style={styles.rivalName}>
+              {item.isGhost ? "👻 " : ""}
               {item.name} <Text style={styles.dim}>Lv{item.level}</Text>
+              {item.isGhost ? <Text style={styles.ghostTag}>  · Wandering Alchemist</Text> : null}
             </Text>
             <Pressable
               onPress={() => raid(item.id, item.name)}
@@ -97,6 +100,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.space(1),
   },
   rivalName: { color: theme.colors.text, fontWeight: "700" },
+  ghostTag: { color: theme.colors.textDim, fontStyle: "italic", fontWeight: "400", fontSize: 11 },
   raidBtn: {
     backgroundColor: theme.colors.ember,
     borderRadius: theme.radius,
