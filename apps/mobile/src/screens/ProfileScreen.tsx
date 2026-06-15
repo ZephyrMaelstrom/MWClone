@@ -31,11 +31,13 @@ function rewardText(r?: Reward): string {
 }
 
 export function ProfileScreen() {
-  const { player, setPlayer, resetProgress, newProfile } = useGame();
+  const { player, setPlayer, resetProgress, logout, register } = useGame();
   const [busy, setBusy] = useState(false);
   const [daily, setDaily] = useState<DailyView | null>(null);
   const [showOps, setShowOps] = useState(false);
   const [adminToken, setAdminToken] = useState("");
+  const [regUser, setRegUser] = useState("");
+  const [regPass, setRegPass] = useState("");
 
   useEffect(() => {
     AsyncStorage.getItem("cc.adminToken").then((t) => t && setAdminToken(t));
@@ -171,19 +173,27 @@ export function ProfileScreen() {
     }
   };
 
-  const confirmNew = async () => {
+  const confirmLogout = async () => {
     const ok = await confirmDialog(
-      "Start a new profile?",
-      "Abandons this profile and creates a brand-new one.",
-      "New profile",
+      "Log out?",
+      player?.hasAccount
+        ? "You can log back in with your username and password."
+        : "This is a guest profile with no login — you will NOT be able to get back to it. Create an account first to keep it.",
+      "Log out",
       true,
     );
     if (!ok) return;
+    await logout();
+  };
+
+  const createAccount = async () => {
+    if (!regUser || !regPass) return;
     setBusy(true);
     try {
-      await newProfile();
+      await register(regUser.trim(), regPass); // claims this guest profile
+      notify("Account created", "Your progress is now saved across devices.");
     } catch (e) {
-      notify("Could not create", (e as Error).message);
+      notify("Could not create account", (e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -192,13 +202,39 @@ export function ProfileScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.panel}>
-        <Text style={styles.title}>{player?.name}</Text>
+        <Text style={styles.title}>{player?.username ?? player?.name}</Text>
         <Row label="Level" value={String(player?.level ?? 0)} />
+        {player && (
+          <>
+            <View style={styles.xpTrack}>
+              <View
+                style={[
+                  styles.xpFill,
+                  {
+                    width: `${Math.max(
+                      0,
+                      Math.min(
+                        100,
+                        Math.round(
+                          ((player.xp - player.xpThisLevel) /
+                            Math.max(1, player.xpNextLevel - player.xpThisLevel)) *
+                            100,
+                        ),
+                      ),
+                    )}%`,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.hint}>
+              XP {player.xp - player.xpThisLevel}/{player.xpNextLevel - player.xpThisLevel} to next level
+            </Text>
+          </>
+        )}
         <Row label="Grist" value={(player?.grist ?? 0).toLocaleString()} />
         <Row label="Elixir" value={String(player?.elixir ?? 0)} />
         <Row label="Critters" value={String(player?.critters.length ?? 0)} />
-        <Row label="Residue shards" value={String(player?.residueShards ?? 0)} />
-        <Text style={styles.idText}>id: {player?.id}</Text>
+        <Row label="Account" value={player?.hasAccount ? "✓ saved" : "guest"} />
       </View>
 
       <Text style={styles.heading}>Skill points · {player?.skillPoints ?? 0} to spend</Text>
@@ -267,11 +303,27 @@ export function ProfileScreen() {
         ))}
       </View>
 
+      <Text style={styles.heading}>Account</Text>
+      <View style={styles.panel}>
+        {player?.hasAccount ? (
+          <Text style={styles.hint}>Logged in as {player.username}. Saved across devices.</Text>
+        ) : (
+          <>
+            <Text style={styles.hint}>Guest profile — create an account to keep it & log in elsewhere.</Text>
+            <TextInput value={regUser} onChangeText={setRegUser} placeholder="Username" autoCapitalize="none" placeholderTextColor={theme.colors.textDim} style={styles.input} />
+            <TextInput value={regPass} onChangeText={setRegPass} placeholder="Password" secureTextEntry autoCapitalize="none" placeholderTextColor={theme.colors.textDim} style={styles.input} />
+            <Pressable onPress={createAccount} disabled={busy || !regUser || !regPass} style={[styles.smallBtn, (busy || !regUser || !regPass) && styles.dim2]}>
+              <Text style={styles.smallText}>Create account & save</Text>
+            </Pressable>
+          </>
+        )}
+        <Pressable onPress={confirmLogout} disabled={busy} style={[styles.button, styles.danger]}>
+          <Text style={styles.buttonText}>Log out</Text>
+        </Pressable>
+      </View>
+
       <Pressable onPress={confirmReset} disabled={busy} style={[styles.button, styles.warn]}>
         <Text style={styles.buttonText}>Reset Progress</Text>
-      </Pressable>
-      <Pressable onPress={confirmNew} disabled={busy} style={[styles.button, styles.danger]}>
-        <Text style={styles.buttonText}>Start New Profile</Text>
       </Pressable>
 
       <Pressable onPress={() => setShowOps((v) => !v)} style={styles.opsToggle}>
@@ -331,6 +383,8 @@ const styles = StyleSheet.create({
   label: { color: theme.colors.textDim },
   value: { color: theme.colors.text, fontWeight: "700" },
   idText: { color: theme.colors.textDim, fontSize: 11, marginTop: theme.space(1) },
+  xpTrack: { height: 10, backgroundColor: theme.colors.bg, borderRadius: 5, overflow: "hidden", marginTop: theme.space(1) },
+  xpFill: { height: 10, backgroundColor: theme.colors.ember },
   dim: { color: theme.colors.textDim },
   heading: { color: theme.colors.brass, fontWeight: "800", marginBottom: theme.space(1) },
   skillRow: {

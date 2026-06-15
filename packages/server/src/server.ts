@@ -53,7 +53,8 @@ import {
   leaveCoven,
   summonHomunculus,
 } from "./covens.js";
-import { broodTotals, critterStats, maxFielded } from "@cc/engine";
+import { broodTotals, critterStats, maxFielded, xpForLevel } from "@cc/engine";
+import { login, register } from "./auth.js";
 import type { SkillKey } from "./store.js";
 
 const now = () => Date.now();
@@ -69,8 +70,12 @@ function publicState(p: PlayerState) {
   return {
     id: p.id,
     name: p.name,
+    username: p.username,
+    hasAccount: !!p.username,
     level: p.level,
     xp: p.xp,
+    xpThisLevel: xpForLevel(p.level),
+    xpNextLevel: xpForLevel(p.level + 1),
     grist: p.grist,
     vaultGrist: p.vaultGrist,
     elixir: p.elixir,
@@ -131,6 +136,43 @@ export function buildServer(): FastifyInstance {
 
   // Allow the web client to call the API (same-origin in prod; permissive otherwise).
   app.register(cors, { origin: true });
+
+  // Ownership guard: any /players/:id route for a player that HAS an account
+  // requires a matching x-player-token. Guest profiles (no token) stay open.
+  app.addHook("preHandler", (req, reply, done) => {
+    const id = (req.params as { id?: string } | undefined)?.id;
+    if (id) {
+      const p = getPlayer(id);
+      if (p?.token && req.headers["x-player-token"] !== p.token) {
+        reply.code(401).send({ error: "Authentication required" });
+        return;
+      }
+    }
+    done();
+  });
+
+  // --- Accounts ---
+  app.post("/auth/register", async (req, reply) => {
+    const body = (req.body ?? {}) as { username?: string; password?: string; claimId?: string };
+    if (!body.username || !body.password) {
+      return reply.code(400).send({ error: "username and password required" });
+    }
+    return guard(reply, () => {
+      const { player, token } = register(body.username!, body.password!, body.claimId, now());
+      return { playerId: player.id, token, state: publicState(player) };
+    });
+  });
+
+  app.post("/auth/login", async (req, reply) => {
+    const body = (req.body ?? {}) as { username?: string; password?: string };
+    if (!body.username || !body.password) {
+      return reply.code(400).send({ error: "username and password required" });
+    }
+    return guard(reply, () => {
+      const { player, token } = login(body.username!, body.password!);
+      return { playerId: player.id, token, state: publicState(player) };
+    });
+  });
 
   app.get("/health", async () => ({ ok: true }));
 
@@ -453,6 +495,9 @@ export function buildServer(): FastifyInstance {
     const attacker = body.attacker ? getPlayer(body.attacker) : undefined;
     const defender = body.defender ? getPlayer(body.defender) : undefined;
     if (!attacker || !defender) return reply.code(404).send({ error: "Player not found" });
+    if (attacker.token && req.headers["x-player-token"] !== attacker.token) {
+      return reply.code(401).send({ error: "Authentication required" });
+    }
     if (attacker.id === defender.id) return reply.code(400).send({ error: "Cannot raid yourself" });
     return guard(reply, () => {
       const outcome = doRaid(attacker, defender, now());

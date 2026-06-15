@@ -69,6 +69,11 @@ export interface PlayerState {
   createdTs: number;
   covenId?: string;
   bossDamageTotal: number; // lifetime World Boss damage (leaderboard)
+  // account (optional — guests have none)
+  username?: string;
+  passwordHash?: string;
+  salt?: string;
+  token?: string;
   // ghost (bot rival) fields
   isGhost?: boolean;
   ghostBaselineGrist?: number; // ghosts refill to this after being raided

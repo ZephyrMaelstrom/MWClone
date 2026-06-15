@@ -240,7 +240,7 @@ export function doQuest(p: PlayerState, now: number): QuestOutcome {
 
   const rng = rngFactory();
   const grist = Math.round((200 + Math.floor(rng() * 300)) * questGristMultiplier(now));
-  const xp = 10 + Math.floor(rng() * 10);
+  const xp = 35 + Math.floor(rng() * 25); // 35-59 XP per quest (reach L2 in ~1 energy bar)
   p.grist += grist;
   grantXp(p, xp);
 

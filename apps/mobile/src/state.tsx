@@ -1,8 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api, type PlayerState } from "./api";
+import { api, setAuthToken, type PlayerState } from "./api";
 
-const PLAYER_ID_KEY = "cc.playerId";
+const ID_KEY = "cc.playerId";
+const TOKEN_KEY = "cc.token";
 
 interface GameContextValue {
   player: PlayerState | null;
@@ -10,10 +11,11 @@ interface GameContextValue {
   error: string | null;
   setPlayer: (p: PlayerState) => void;
   refresh: () => Promise<void>;
-  /** Wipe progress back to a fresh starter profile (same id). */
+  login: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  playAsGuest: () => Promise<void>;
   resetProgress: () => Promise<void>;
-  /** Abandon this profile and start a brand-new one. */
-  newProfile: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -25,11 +27,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const setPlayer = useCallback((p: PlayerState) => setPlayerState(p), []);
 
-  const createAndStore = useCallback(async () => {
-    const p = await api.createPlayer("Alchemist");
-    await AsyncStorage.setItem(PLAYER_ID_KEY, p.id);
-    setPlayerState(p);
-    return p;
+  const persist = useCallback(async (id: string, token: string | null) => {
+    await AsyncStorage.setItem(ID_KEY, id);
+    if (token) await AsyncStorage.setItem(TOKEN_KEY, token);
+    else await AsyncStorage.removeItem(TOKEN_KEY);
+    setAuthToken(token);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -41,50 +43,79 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   }, [player]);
 
+  const login = useCallback(
+    async (username: string, password: string) => {
+      const res = await api.login(username, password);
+      await persist(res.playerId, res.token);
+      setPlayerState(res.state);
+    },
+    [persist],
+  );
+
+  const register = useCallback(
+    async (username: string, password: string) => {
+      // If there's a current guest profile, claim it so progress carries over.
+      const claimId = player && !player.hasAccount ? player.id : undefined;
+      const res = await api.register(username, password, claimId);
+      await persist(res.playerId, res.token);
+      setPlayerState(res.state);
+    },
+    [persist, player],
+  );
+
+  const playAsGuest = useCallback(async () => {
+    const p = await api.createPlayer("Alchemist");
+    await persist(p.id, null);
+    setPlayerState(p);
+  }, [persist]);
+
+  const logout = useCallback(async () => {
+    await AsyncStorage.multiRemove([ID_KEY, TOKEN_KEY]);
+    setAuthToken(null);
+    setPlayerState(null);
+  }, []);
+
   const resetProgress = useCallback(async () => {
     if (!player) return;
     setPlayerState(await api.reset(player.id));
   }, [player]);
 
-  const newProfile = useCallback(async () => {
-    await AsyncStorage.removeItem(PLAYER_ID_KEY);
-    await createAndStore();
-  }, [createAndStore]);
-
-  // Poll for fresh state so resource regen (energy/stamina/HP) ticks up live.
+  // Poll for fresh state so resource regen ticks up live.
   useEffect(() => {
     if (!player) return;
-    const t = setInterval(() => {
-      void refresh();
-    }, 15000);
+    const t = setInterval(() => void refresh(), 15000);
     return () => clearInterval(t);
   }, [player?.id, refresh]);
 
+  // On launch, resume a stored session if there is one.
   useEffect(() => {
     (async () => {
       try {
-        const savedId = await AsyncStorage.getItem(PLAYER_ID_KEY);
+        const [savedId, savedToken] = await Promise.all([
+          AsyncStorage.getItem(ID_KEY),
+          AsyncStorage.getItem(TOKEN_KEY),
+        ]);
         if (savedId) {
+          setAuthToken(savedToken);
           try {
-            // Resume the stored profile (progress persists server-side).
             setPlayerState(await api.getPlayer(savedId));
-            return;
           } catch {
-            // Stored profile is gone on the server — fall through to create.
+            // session invalid/expired — drop it and show auth
+            await AsyncStorage.multiRemove([ID_KEY, TOKEN_KEY]);
+            setAuthToken(null);
           }
         }
-        await createAndStore();
       } catch (e) {
         setError((e as Error).message);
       } finally {
         setLoading(false);
       }
     })();
-  }, [createAndStore]);
+  }, []);
 
   return (
     <GameContext.Provider
-      value={{ player, loading, error, setPlayer, refresh, resetProgress, newProfile }}
+      value={{ player, loading, error, setPlayer, refresh, login, register, logout, playAsGuest, resetProgress }}
     >
       {children}
     </GameContext.Provider>

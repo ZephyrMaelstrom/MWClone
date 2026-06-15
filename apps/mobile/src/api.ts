@@ -15,8 +15,12 @@ const BASE_URL: string =
 export interface PlayerState {
   id: string;
   name: string;
+  username?: string;
+  hasAccount: boolean;
   level: number;
   xp: number;
+  xpThisLevel: number;
+  xpNextLevel: number;
   grist: number;
   vaultGrist: number;
   elixir: number;
@@ -141,17 +145,32 @@ export interface TransmuteOutcome {
   successRateUsed: number;
 }
 
+let authToken: string | null = null;
+/** Set the logged-in player's token; sent as x-player-token on every request. */
+export function setAuthToken(token: string | null): void {
+  authToken = token;
+}
+
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   // Only send a JSON content-type when there's actually a body — Fastify rejects
   // an empty body that declares application/json (no-body POSTs like roulette).
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers["content-type"] = "application/json";
+  if (authToken) headers["x-player-token"] = authToken;
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
-    headers: body !== undefined ? { "content-type": "application/json" } : {},
+    headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const json = (await res.json()) as T & { error?: string };
   if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
   return json;
+}
+
+export interface AuthResult {
+  playerId: string;
+  token: string;
+  state: PlayerState;
 }
 
 async function adminReq<T>(method: string, path: string, token: string, body?: unknown): Promise<T> {
@@ -168,6 +187,10 @@ async function adminReq<T>(method: string, path: string, token: string, body?: u
 }
 
 export const api = {
+  register: (username: string, password: string, claimId?: string) =>
+    req<AuthResult>("POST", "/auth/register", { username, password, claimId }),
+  login: (username: string, password: string) =>
+    req<AuthResult>("POST", "/auth/login", { username, password }),
   createPlayer: (name: string) => req<PlayerState>("POST", "/players", { name }),
   getPlayer: (id: string) => req<PlayerState>("GET", `/players/${id}`),
   claim: (id: string) => req<{ gained: number; state: PlayerState }>("POST", `/players/${id}/claim`),

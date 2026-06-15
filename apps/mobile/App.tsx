@@ -11,6 +11,7 @@ import { RaidScreen } from "./src/screens/RaidScreen";
 import { BossScreen } from "./src/screens/BossScreen";
 import { CovenScreen } from "./src/screens/CovenScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
+import { AuthScreen } from "./src/screens/AuthScreen";
 
 type TabKey = "crucible" | "roster" | "quest" | "raid" | "boss" | "coven" | "profile";
 const TABS: { key: TabKey; label: string }[] = [
@@ -40,7 +41,7 @@ function HeaderBar() {
 }
 
 function Shell() {
-  const { loading, error } = useGame();
+  const { loading, error, player } = useGame();
   const [tab, setTab] = useState<TabKey>("crucible");
 
   if (loading) {
@@ -51,6 +52,7 @@ function Shell() {
       </View>
     );
   }
+  if (!player) return <AuthScreen />;
   if (error) {
     return (
       <View style={styles.center}>
