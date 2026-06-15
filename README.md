@@ -6,9 +6,23 @@ of eager players**, targeting **mobile (React Native / Flutter)** with a **monet
 economy. Capture critters, **fuse them in the crucible** to transmute up a ladder of base
 metals toward the Magnum Opus, and raid rival labs.
 
-> This repo currently contains the **design**. Code (a playable prototype) comes next —
-> see [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) §16 for the MVP scope and §14 for the
-> proposed architecture.
+## Monorepo layout (pnpm workspace)
+```
+packages/engine   @cc/engine  — shared game logic (config-as-data + pure fns), 31 tests
+packages/server   @cc/server  — server-authoritative Fastify API, 6 tests
+apps/mobile       @cc/mobile  — Expo / React Native client (Crucible centerpiece)
+docs/             design + tuning + research
+```
+
+## Run it
+```bash
+pnpm install
+pnpm -r test                 # engine + server tests (37 passing)
+pnpm -C packages/server dev  # API on http://localhost:3000
+pnpm -C apps/mobile start    # Expo client (needs Expo toolchain + device/sim)
+```
+The engine and server are verified in this environment; the mobile app is scaffolded and
+typechecks but needs the Expo toolchain/simulator to boot (see `apps/mobile/README.md`).
 
 ## Documents
 - [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) — the full Game Design Document (GDD).
@@ -22,6 +36,8 @@ metals toward the Magnum Opus, and raid rival labs.
 - [x] First-draft GDD
 - [x] Branding / theme locked — **Crucible Critters** (GDD §3)
 - [x] Mechanical tuning — 11 tiers · friendly PvP · no gifting (GDD §17, `docs/TUNING.md`)
-- [ ] Client decision: React Native vs Flutter (GDD §17.5)
+- [x] Client decision: **React Native (Expo)** + Skia/Reanimated
+- [x] MVP prototype scaffolded — engine + server verified, mobile client typechecks
+- [ ] Boot mobile app on device/simulator + iterate visuals
 - [ ] Economy & combat numbers playtested
 - [ ] Playable prototype (mobile)
